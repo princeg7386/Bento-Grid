@@ -333,3 +333,35 @@ itself throws — was never reached.
 **Fix.** When a `5xx` arrives with no parseable `error` field, the client now says so and names
 the likely cause: *"The API answered 500 with no detail. If the backend is not running, start it
 with ./run.sh or on port 5179."*
+
+## 14. A concurrent reset raced a live worker and crashed with a foreign-key error
+
+**Symptom.** Found while manually verifying the new health monitor: seeding the demo twice in
+close succession against a running API produced
+
+```
+fail: Microsoft.EntityFrameworkCore.Update[10000]
+      Microsoft.Data.Sqlite.SqliteException: SQLite Error 19: 'FOREIGN KEY constraint failed'.
+fail: CycleGuard.Api.Workers.WorkerPoolService[0]
+      Worker worker-2 hit an unhandled error; continuing.
+```
+
+**Cause.** `ScenarioSimulator.ResetAsync` deletes every `Jobs`/`JobAttempts` row to start a
+fresh scenario. If a worker had already claimed a job from the *previous* scenario and was
+mid-flight, `JobQueue.RecordAttemptStartAsync` tried to insert a `JobAttempt` row pointing at a
+`Job` that Reset had just deleted -- a straightforward foreign-key violation. The worker's own
+catch-all kept the app alive (by design, so one bad job never takes a worker out of service),
+but it logged a full EF Core exception for something that isn't actually a data problem: a
+demo action deleted a row a live worker was still holding.
+
+**Fix.** `RecordAttemptStartAsync` now checks whether the job still exists before inserting,
+and returns `null` instead of letting the insert throw. `JobExecutor` treats a `null` attempt
+as "this job vanished mid-flight, abandon it" and logs one clean informational line instead of
+an exception. Pinned by `AJobDeletedAfterClaimIsAbandonedRatherThanCrashingTheWorker`, which
+deletes a claimed job's row directly (simulating the race) and asserts the executor does not
+throw.
+
+**Lesson:** "reset while something is running" is not a hypothetical in a system with a Reset
+button and background workers -- an operator can trigger it by clicking twice, and the fix
+belongs at the point where a row's disappearance is discovered, not by trying to prevent the
+race from ever happening.

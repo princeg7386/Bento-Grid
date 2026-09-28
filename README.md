@@ -279,6 +279,7 @@ a demo replay is identical. Configurable globally and per job type in `appsettin
 | `POST` | `/api/demo/reset` | Clear everything |
 | `POST` | `/api/demo/timescale` | Change time compression (1–3600) |
 | `POST` | `/api/demo/kill-worker` | Expire a running payment job's lease |
+| `GET` | `/api/morning-report` | The unattended monitor's latest verdict: `Idle`/`Healthy`/`NeedsAttention`/`Critical` |
 
 Swagger UI at `/swagger`.
 
@@ -457,8 +458,38 @@ tests/           xUnit suite
 docs/            risk model, decisions, bugs hit while building
 ```
 
+## The unattended monitor
+
+Nobody has to open the dashboard to know whether last night is fine. A background job
+(`HealthMonitorService`) checks the queue every 30 real seconds -- on its own clock, not the
+demo's compressed one -- and leaves one verdict ready at:
+
+```
+GET /api/morning-report
+```
+
+```json
+{
+  "verdict": "NeedsAttention",
+  "headline": "8 dead letters unresolved, 42 jobs at risk.",
+  "summary": "300 jobs total, 250 succeeded, 8 dead-lettered. ...",
+  "dollarsAtRiskCents": 19969055,
+  "topIssues": [ /* up to 5 root causes, worst first */ ]
+}
+```
+
+`verdict` is one of `Idle` (nothing seeded yet), `Healthy`, `NeedsAttention`, or `Critical`
+(something has already missed its deadline) -- deterministic rules, no AI, same convention as
+every other decision in this codebase (see ADR-4). This is a health check for the queue, not a
+replacement for the risk model: it summarizes the same numbers the dashboard shows, for a
+person -- or a pager -- to read without doing the analysis themselves.
+
 ## Further reading
 
+- [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) — CycleGuard explained from zero, for anyone
+  who has never touched .NET
+- [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) — exact steps and commands for demoing this,
+  click-through or curl-only
 - [docs/risk-model.md](docs/risk-model.md) — every rule, with two worked examples
 - [docs/DECISIONS.md](docs/DECISIONS.md) — the non-obvious calls and their costs
 - [docs/WHAT_BROKE.md](docs/WHAT_BROKE.md) — real bugs hit while building this, before and after
