@@ -31,12 +31,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`
+    let explained = false
     try {
       const body = (await response.json()) as { error?: string }
-      if (body?.error) detail = body.error
+      if (body?.error) {
+        detail = body.error
+        explained = true
+      }
     } catch {
       // Not every error response carries JSON.
     }
+
+    // The dev server proxies /api, so a backend that is not listening surfaces here as a
+    // bodyless 5xx rather than a failed fetch. "500 Internal Server Error" sends people
+    // hunting through API logs that do not exist.
+    if (!explained && response.status >= 500) {
+      detail = `The API answered ${response.status} with no detail. If the backend is not running, start it with ./run.sh or on port 5179.`
+    }
+
     throw new ApiError(detail, response.status)
   }
 

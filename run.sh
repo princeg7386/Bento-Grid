@@ -54,7 +54,32 @@ echo "==> Dashboard http://localhost:${WEB_PORT}"
 pids+=($!)
 
 echo
+
+# Wait for the API to answer before telling anyone to open the dashboard, so the first
+# thing they see is not four "request failed" panels.
+for _ in $(seq 1 60); do
+  if curl -sf "http://localhost:${API_PORT}/api/health" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
 echo "Open http://localhost:${WEB_PORT} and click 'Simulate last night'."
 echo "Press Ctrl+C to stop both."
+echo
 
-wait -n
+# Supervise both children and exit as soon as either one dies, so a crashed API does not
+# leave a dashboard up that can only show errors.
+#
+# Deliberately not `wait -n`: macOS ships bash 3.2, where that option does not exist. It
+# fails with "wait: -n: invalid option", which fires the EXIT trap and kills both servers
+# about a second after they start. See docs/WHAT_BROKE.md.
+while true; do
+  for pid in "${pids[@]}"; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "==> A CycleGuard process exited; shutting the other one down."
+      exit 1
+    fi
+  done
+  sleep 1
+done

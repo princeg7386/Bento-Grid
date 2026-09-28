@@ -271,3 +271,65 @@ regression cases now pin the prose behaviour.
 **Lesson:** masking is applied to operator-authored text as well as machine-authored text, and
 the two have very different shapes. Over-masking is the safer failure, but it is still a failure
 — and it was only visible by driving the actual UI, not the API.
+
+## 12. `./run.sh` killed both servers a second after starting them
+
+**Symptom.** The single-command entry point — the first thing anyone runs — started the API and
+the dashboard and then immediately tore both down:
+
+```
+==> API      http://localhost:5179  (Swagger at /swagger)
+==> Dashboard http://localhost:5173
+./run.sh: line 60: wait: -n: invalid option
+wait: usage: wait [n]
+==> Stopping CycleGuard
+```
+
+Vite came up, then spent its short life logging `ECONNREFUSED` against an API that had been
+killed before it finished binding.
+
+**Cause.** The script ended with `wait -n`, which blocks until *any* child exits. That option
+arrived in bash 4.3. macOS still ships **bash 3.2.57** as `/bin/bash`, and `#!/usr/bin/env bash`
+finds exactly that unless a newer bash is installed and earlier on `PATH`. The unrecognised
+option made `wait` fail, `set -e` aborted the script, and the `EXIT` trap dutifully killed both
+children.
+
+The irony is that the trap worked perfectly. It was cleaning up a process group that had no
+reason to be cleaned up.
+
+**Fix.** A portable supervisor loop that polls both PIDs, which behaves the same on bash 3.2 as
+on bash 5:
+
+```bash
+while true; do
+  for pid in "${pids[@]}"; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "==> A CycleGuard process exited; shutting the other one down."
+      exit 1
+    fi
+  done
+  sleep 1
+done
+```
+
+The script also now waits for `/api/health` to answer before printing "open the dashboard", so
+the first thing a new user sees is the console rather than four "request failed" panels.
+
+**Lesson:** the one script everybody runs is the one least likely to be tested, and macOS's
+thirteen-year-old default bash is not a hypothetical. Worth running `bash -n` and an actual
+launch before claiming a one-command setup works.
+
+## 13. A proxied dead backend reports as a bodyless 500
+
+**Symptom.** With the API stopped, every dashboard panel showed `▲ REQUEST FAILED · 500 Internal
+Server Error` — technically true and completely unhelpful, since it points at an API that is not
+running and therefore has no logs to read.
+
+**Cause.** The browser never talks to the API directly in development; Vite proxies `/api`. A
+refused upstream connection becomes a proxy-generated `500` with an empty body, so the client's
+`fetch` resolves normally and the "cannot reach the API" branch — which only fires when `fetch`
+itself throws — was never reached.
+
+**Fix.** When a `5xx` arrives with no parseable `error` field, the client now says so and names
+the likely cause: *"The API answered 500 with no detail. If the backend is not running, start it
+with ./run.sh or on port 5179."*
