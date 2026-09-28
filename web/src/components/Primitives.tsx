@@ -10,8 +10,9 @@ export function RiskBadge({ risk, compact = false }: { risk: RiskLevel; compact?
       title={style.label}
     >
       <span aria-hidden="true">{style.glyph}</span>
-      {!compact && <span>{style.label}</span>}
-      <span className="sr-only">{style.label}</span>
+      {/* The label is visible unless compact, so the screen-reader copy is only needed
+          when it is hidden. Rendering both announced it twice. */}
+      {compact ? <span className="sr-only">{style.label}</span> : <span>{style.label}</span>}
     </span>
   )
 }

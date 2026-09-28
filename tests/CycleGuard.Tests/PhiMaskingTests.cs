@@ -94,6 +94,20 @@ public class PhiMaskingTests
         Assert.Equal(input, PhiMasker.Mask(input));
     }
 
+    [Theory]
+    // Free text after a label is prose, not an identifier. Over-masking an analyst's note
+    // makes the audit trail unreadable, which is its own kind of failure.
+    [InlineData("Member id corrected in the source record.")]
+    [InlineData("MemberId missing from the upstream extract")]
+    [InlineData("member_id should have been populated by the feed")]
+    public void LabelledMemberRulesDoNotEatOrdinaryProse(string input)
+    {
+        var masked = PhiMasker.Mask(input);
+
+        Assert.Equal(input, masked);
+        Assert.DoesNotContain(PhiMasker.MemberToken, masked);
+    }
+
     [Fact]
     public void LongIdentifiersAreNotMistakenForPhoneNumbers()
     {

@@ -236,3 +236,38 @@ attempt 2  worker-2   Succeeded
 
 The README now says the endpoint only lands while the queue is genuinely busy, and points at the
 seeded orphan as the reliable demonstration.
+
+## 11. The masker ate an analyst's note
+
+**Symptom.** Found by using the dashboard rather than by a test. A requeue was submitted through
+the drawer with the note *"Member id corrected in the source record."* The audit trail recorded:
+
+```
+Requeued  Priya S  Requeued from dead-letter. Note: Member id: [MEMBER-ID-REDACTED]
+```
+
+The note was destroyed. An audit trail that cannot be read is not an audit trail.
+
+**Cause.** The labelled-member rule accepted any token after the label:
+
+```
+\b(MemberId|Member[ _]?ID|member_id|MBR|MID|MEM)\b\s*[:=#\-]?\s*[A-Za-z0-9][A-Za-z0-9\-]{4,}
+```
+
+Both the separator and the whitespace are optional, so `Member id corrected` parsed as label
+`Member id` followed by value `corrected` — nine characters, comfortably over the five-character
+minimum. The rule had no way to tell an identifier from the next English word.
+
+**Fix.** Require a digit somewhere in the value, via a lookahead that does not consume anything:
+
+```
+...\s*[:=#\-]?\s*(?=[A-Za-z0-9\-]*\d)[A-Za-z0-9][A-Za-z0-9\-]{4,}
+```
+
+Every member identifier in this domain contains digits; ordinary prose does not. All existing
+cases still mask (`MemberId: MBR-4471902`, `member_id = M004471902`, `MID#88117402`), and three
+regression cases now pin the prose behaviour.
+
+**Lesson:** masking is applied to operator-authored text as well as machine-authored text, and
+the two have very different shapes. Over-masking is the safer failure, but it is still a failure
+— and it was only visible by driving the actual UI, not the API.

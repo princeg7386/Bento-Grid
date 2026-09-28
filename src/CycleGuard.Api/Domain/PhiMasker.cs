@@ -79,7 +79,11 @@ public static partial class PhiMasker
     [GeneratedRegex(@"\b\d{3}-\d{2}-\d{4}\b", RegexOptions.Compiled)]
     private static partial Regex BareSsnRegex();
 
-    [GeneratedRegex(@"\b(MemberId|Member[ _]?ID|member_id|MBR|MID|MEM)\b\s*[:=#\-]?\s*[A-Za-z0-9][A-Za-z0-9\-]{4,}",
+    // The lookahead requires a digit somewhere in the value. Without it the rule fires on
+    // ordinary prose after the label -- an analyst's requeue note reading "Member id corrected
+    // in the source record" came back as "Member id: [MEMBER-ID-REDACTED]", which makes the
+    // audit trail unreadable. Every member identifier in this domain contains digits.
+    [GeneratedRegex(@"\b(MemberId|Member[ _]?ID|member_id|MBR|MID|MEM)\b\s*[:=#\-]?\s*(?=[A-Za-z0-9\-]*\d)[A-Za-z0-9][A-Za-z0-9\-]{4,}",
         RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex LabelledMemberRegex();
 
