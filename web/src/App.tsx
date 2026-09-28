@@ -7,6 +7,7 @@ import { CycleBanner } from './components/CycleBanner'
 import { DeadLetterPanel } from './components/DeadLetterPanel'
 import { GroupCards } from './components/GroupCards'
 import { JobDrawer } from './components/JobDrawer'
+import { MorningReportSpeaker } from './components/MorningReportSpeaker'
 import { RiskList } from './components/RiskList'
 import { SimulationPanel } from './components/SimulationPanel'
 import { ErrorState, LoadingRows } from './components/Primitives'
@@ -69,10 +70,13 @@ export default function App() {
               Sorted by when it will cost you, not by when it broke.
             </p>
           </div>
-          <span className="font-mono text-[10px] tracking-wider text-ink-400 uppercase">
-            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-signal-done align-middle cg-pulse" />
-            polling every {POLL_MS / 1000}s
-          </span>
+          <div className="flex items-center gap-2">
+            <MorningReportSpeaker />
+            <span className="font-mono text-[10px] tracking-wider text-ink-400 uppercase">
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-signal-done align-middle cg-pulse" />
+              polling every {POLL_MS / 1000}s
+            </span>
+          </div>
         </div>
 
         {statusPoll.error && !statusPoll.data ? (

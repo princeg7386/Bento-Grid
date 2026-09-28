@@ -72,6 +72,13 @@ public class Job
     /// <summary>True for jobs created by the demo simulator.</summary>
     public bool IsSynthetic { get; set; }
 
+    /// <summary>
+    /// The regulatory clock this job is actually running against, when it has one. Null for
+    /// job types the persona's stated deadlines don't apply to (payment runs answer to the
+    /// payment cycle close, not a prior-authorization SLA). See <see cref="SlaClasses"/>.
+    /// </summary>
+    public string? SlaClass { get; set; }
+
     public List<JobAttempt> AttemptLog { get; set; } = new();
 
     [NotMapped]
@@ -89,4 +96,23 @@ public class Job
     /// <summary>Retries still permitted after the attempts already made.</summary>
     [NotMapped]
     public int RetriesRemaining => Math.Max(0, MaxAttempts - Attempts);
+}
+
+/// <summary>
+/// The two regulatory deadlines the pitch cites for prior-authorization-style decisions:
+/// 72 hours expedited, 7 calendar days standard. Purely informational metadata here -- the
+/// job's actual <see cref="Job.DeadlineTicks"/> still drives every risk calculation; this is
+/// what a badge on the dashboard reads to explain *why* that deadline exists.
+/// </summary>
+public static class SlaClasses
+{
+    public const string Expedited72Hour = "Expedited72Hour";
+    public const string Standard7Day = "Standard7Day";
+
+    public static string Label(string? slaClass) => slaClass switch
+    {
+        Expedited72Hour => "72h expedited",
+        Standard7Day => "7-day standard",
+        _ => string.Empty
+    };
 }

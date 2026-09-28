@@ -223,6 +223,11 @@ export function JobDrawer({ jobId, onClose }: { jobId: number; onClose: () => vo
               <div className="flex flex-wrap items-center gap-2">
                 <RiskBadge risk={data.summary.risk} />
                 <h2 className="truncate text-sm font-semibold text-ink-100">{jobTypeLabel(data.summary.type)}</h2>
+                {data.summary.slaLabel && (
+                  <span className="shrink-0 rounded border border-ink-600 bg-ink-850 px-1.5 py-0.5 font-mono text-[10px] text-ink-300">
+                    ⏱ {data.summary.slaLabel}
+                  </span>
+                )}
               </div>
               <p className="mt-0.5 font-mono text-[10px] text-ink-400">
                 #{data.summary.id} · {data.summary.downstreamEndpoint} · {stateLabel(data.summary.state)}

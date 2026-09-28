@@ -381,6 +381,14 @@ public sealed class ScenarioSimulator(
 
         var key = $"{type}-{keySuffix}";
 
+        // Only encounter submissions map onto the pitch's stated regulatory clock
+        // (prior-authorization-style decisions). Payment runs answer to the payment cycle
+        // close instead, and claims adjudication has no cited regulatory deadline, so both
+        // stay untagged rather than force-fitting a badge that would not be honest.
+        var slaClass = type == JobType.EncounterSubmission
+            ? (random.NextDouble() < 0.3 ? SlaClasses.Expedited72Hour : SlaClasses.Standard7Day)
+            : null;
+
         return new Job
         {
             Type = type,
@@ -396,7 +404,8 @@ public sealed class ScenarioSimulator(
             NextAttemptTicks = nowTicks,
             CreatedTicks = nowTicks,
             UpdatedTicks = nowTicks,
-            IsSynthetic = true
+            IsSynthetic = true,
+            SlaClass = slaClass
         };
     }
 }

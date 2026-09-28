@@ -1,4 +1,5 @@
 using CycleGuard.Api.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace CycleGuard.Tests;
 
@@ -101,6 +102,25 @@ public class LeaseRecoveryTests
     }
 
     [Fact]
+    public async Task TheSeededScenarioTagsEncounterSubmissionsWithARegulatorySlaClassAndNothingElse()
+    {
+        await using var harness = await QueueHarness.CreateAsync(options => options.Demo.JobCount = 60);
+        await harness.Scenario.SeedLastNightAsync();
+
+        await using var dbContext = await harness.Factory.CreateDbContextAsync();
+        var jobs = await dbContext.Jobs.AsNoTracking().ToListAsync();
+
+        var encounters = jobs.Where(j => j.Type == JobType.EncounterSubmission).ToList();
+        Assert.NotEmpty(encounters);
+        Assert.All(encounters, j => Assert.Contains(j.SlaClass, new[] { SlaClasses.Expedited72Hour, SlaClasses.Standard7Day }));
+
+        // Payments and claims answer to the payment cycle / have no cited regulatory deadline,
+        // so tagging them would not be honest -- they must stay untagged.
+        var others = jobs.Where(j => j.Type != JobType.EncounterSubmission);
+        Assert.All(others, j => Assert.Null(j.SlaClass));
+    }
+
+    [Fact]
     public async Task TheSeededScenarioLeavesOnePaymentJobForTheReaperToRecover()
     {
         await using var harness = await QueueHarness.CreateAsync(options => options.Demo.JobCount = 60);
@@ -116,6 +136,45 @@ public class LeaseRecoveryTests
         Assert.Contains(reclaimed, r => r.JobId == scenario.OrphanedPaymentJobId);
 
         Assert.Equal(JobState.Queued, (await harness.ReloadAsync(scenario.OrphanedPaymentJobId)).State);
+    }
+
+    [Fact]
+    public async Task ValueProtectedCountsAJobRecoveredFromACrashedWorkerAfterItSucceeds()
+    {
+        await using var harness = await QueueHarness.CreateAsync();
+
+        var job = await harness.EnqueueAsync(JobType.PaymentRunDisbursement, amountCents: 5_000_000);
+        var claimed = await harness.Queue.TryClaimAsync("worker-1");
+        await harness.Queue.RecordAttemptStartAsync(claimed!, "worker-1");
+
+        // worker-1 dies; the reaper hands the job to worker-2, which finishes it.
+        harness.Advance(TimeSpan.FromSeconds(31));
+        await harness.Queue.ReclaimExpiredLeasesAsync();
+
+        var reclaimed = await harness.Queue.TryClaimAsync("worker-2");
+        Assert.Equal(job.Id, reclaimed!.Id);
+        var attempt = await harness.Queue.RecordAttemptStartAsync(reclaimed, "worker-2");
+        await harness.Queue.MarkSucceededAsync(reclaimed, attempt!.Id, "worker-2");
+
+        var status = await harness.Reads.GetStatusAsync();
+
+        Assert.Equal(1, status.RecoveredFromCrashedWorkerCount);
+        Assert.Equal(5_000_000, status.RecoveredFromCrashedWorkerCents);
+        Assert.Equal(5_000_000, status.ValueProtectedCents);
+    }
+
+    [Fact]
+    public async Task ASucceededJobThatNeverLostALeaseIsNotCountedAsRecovered()
+    {
+        await using var harness = await QueueHarness.CreateAsync();
+
+        await harness.EnqueueAsync(JobType.PaymentRunDisbursement, amountCents: 1_000_000);
+        await harness.RunOneAsync();
+
+        var status = await harness.Reads.GetStatusAsync();
+
+        Assert.Equal(0, status.RecoveredFromCrashedWorkerCount);
+        Assert.Equal(0, status.ValueProtectedCents);
     }
 
     [Fact]

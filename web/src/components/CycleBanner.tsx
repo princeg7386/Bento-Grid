@@ -112,6 +112,21 @@ export function CycleBanner({
             across {status.needingAttention} job{status.needingAttention === 1 ? '' : 's'}
           </span>
         </div>
+
+        <div className="flex flex-col items-end" title="Duplicate disbursements the ledger refused to apply twice, plus payments recovered from a worker that crashed mid-job -- money this system already protected, not money still at risk.">
+          <span className="font-mono text-[10px] tracking-[0.18em] text-ink-400 uppercase">Value protected</span>
+          <span
+            className={`tnum font-mono text-4xl leading-none font-bold ${
+              status.valueProtectedCents > 0 ? 'text-signal-done' : 'text-ink-400'
+            }`}
+          >
+            {money(status.valueProtectedCents)}
+          </span>
+          <span className="mt-1 font-mono text-[11px] text-ink-400">
+            {status.duplicatesPreventedCount} duplicate{status.duplicatesPreventedCount === 1 ? '' : 's'} blocked ·{' '}
+            {status.recoveredFromCrashedWorkerCount} recovered from a crashed worker
+          </span>
+        </div>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-ink-700/70 pt-3 sm:grid-cols-3 lg:grid-cols-6">

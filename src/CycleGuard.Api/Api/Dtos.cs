@@ -24,7 +24,9 @@ public sealed record JobSummaryDto(
     string IdempotencyKey,
     int RequeueCount,
     bool DeadLetterResolved,
-    bool IsSynthetic);
+    bool IsSynthetic,
+    string? SlaClass,
+    string? SlaLabel);
 
 public sealed record AttemptDto(
     long Id,
@@ -88,7 +90,10 @@ public sealed record StatusDto(
     double SuccessRatePercent,
     double RetryRatePercent,
     int WorkerCount,
-    IReadOnlyList<OutageDto> ActiveOutages);
+    IReadOnlyList<OutageDto> ActiveOutages,
+    long ValueProtectedCents,
+    int RecoveredFromCrashedWorkerCount,
+    long RecoveredFromCrashedWorkerCents);
 
 public sealed record OutageDto(string Endpoint, DateTime RecoversAtUtc, long SecondsRemaining);
 

@@ -86,7 +86,21 @@ export function RiskList({
                     <RiskBadge risk={job.risk} />
                   </td>
                   <td className="px-3 py-2 align-top">
-                    <div className="text-xs font-medium text-ink-100">{jobTypeLabel(job.type)}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-ink-100">{jobTypeLabel(job.type)}</span>
+                      {job.slaLabel && (
+                        <span
+                          className={`shrink-0 rounded border px-1 py-px font-mono text-[9px] tracking-wide ${
+                            job.slaClass === 'Expedited72Hour'
+                              ? 'border-signal-risk/40 bg-signal-risk/10 text-signal-risk'
+                              : 'border-ink-600 bg-ink-850 text-ink-300'
+                          }`}
+                          title="Regulatory SLA for this prior-authorization-style decision."
+                        >
+                          ⏱ {job.slaLabel}
+                        </span>
+                      )}
+                    </div>
                     <div className="font-mono text-[10px] text-ink-400">
                       #{job.id} · {job.downstreamEndpoint}
                       {job.requeueCount > 0 && ` · requeued ${job.requeueCount}×`}

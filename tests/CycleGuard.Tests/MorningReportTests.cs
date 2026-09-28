@@ -53,7 +53,10 @@ public class MorningReportTests
             0,
             0,
             4,
-            outages ?? []);
+            outages ?? [],
+            duplicatesPreventedCents, // ValueProtectedCents: no lease-recovery cases in these tests
+            0,
+            0);
 
     [Fact]
     public void NoScenarioIsIdleNotHealthy()

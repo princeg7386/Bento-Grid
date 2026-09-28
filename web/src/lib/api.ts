@@ -2,6 +2,7 @@ import type {
   DeadLetterGroup,
   JobDetail,
   JobSummary,
+  MorningReport,
   RootCauseGroup,
   ScenarioResult,
   Status,
@@ -81,6 +82,8 @@ export const api = {
   groups: () => request<RootCauseGroup[]>('/api/groups'),
 
   deadLetters: () => request<DeadLetterGroup[]>('/api/deadletters'),
+
+  morningReport: () => request<MorningReport>('/api/morning-report'),
 
   requeue: (id: number, analyst: string, note: string) =>
     request<{ requeued: boolean }>(`/api/jobs/${id}/requeue`, {

@@ -28,6 +28,7 @@ public class CycleGuardDbContext(DbContextOptions<CycleGuardDbContext> options) 
             job.Property(j => j.IdempotencyKey).HasMaxLength(128).IsRequired();
             job.Property(j => j.DownstreamIdempotencyKey).HasMaxLength(128).IsRequired();
             job.Property(j => j.DownstreamEndpoint).HasMaxLength(64).IsRequired();
+            job.Property(j => j.SlaClass).HasMaxLength(32);
             job.Property(j => j.Payload).IsRequired();
 
             // One job per idempotency key, enforced by the database rather than by code.

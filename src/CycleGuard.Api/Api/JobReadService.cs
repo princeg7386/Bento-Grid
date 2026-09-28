@@ -284,6 +284,28 @@ public sealed class JobReadService(
 
         var duplicateCents = jobs.Where(j => duplicates.Contains(j.Id)).Sum(j => j.AmountAtStakeCents);
 
+        // "Recovered from a crashed worker": a job whose worker died mid-attempt (its lease
+        // expired) but that went on to succeed anyway, because the reaper handed it to another
+        // worker. Without lease recovery this money would have sat behind a dead worker
+        // forever -- this is the dollar value of that safety net, not just a job count.
+        var leaseRecoveredJobIds = await dbContext.JobAttempts.AsNoTracking()
+            .Where(a => a.Outcome == AttemptOutcome.LeaseExpired)
+            .Select(a => a.JobId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var recoveredJobs = jobs
+            .Where(j => j.State == JobState.Succeeded && leaseRecoveredJobIds.Contains(j.Id))
+            .ToList();
+        var recoveredCents = recoveredJobs.Sum(j => j.AmountAtStakeCents);
+
+        // Two distinct, non-overlapping guarantees stacked into one headline: money that
+        // would have been paid twice, plus money that would have stalled behind a dead
+        // worker forever. Deliberately not folding in "succeeded after a retry" too -- that
+        // would count nearly every transient timeout and dilute what is meant to be a
+        // specific, earned number.
+        var valueProtectedCents = duplicateCents + recoveredCents;
+
         var cycleClose = simulation.CycleCloseTicks;
         var secondsToClose = cycleClose == 0
             ? 0
@@ -316,7 +338,10 @@ public sealed class JobReadService(
             finished == 0 ? 0 : Math.Round(succeeded / (double)finished * 100.0, 1),
             Math.Round(retryRate, 1),
             Options.Workers.Count,
-            activeOutages);
+            activeOutages,
+            valueProtectedCents,
+            recoveredJobs.Count,
+            recoveredCents);
     }
 
     /// <summary>Project a job row plus the clock into what the list shows.</summary>
@@ -353,6 +378,8 @@ public sealed class JobReadService(
             job.IdempotencyKey,
             job.RequeueCount,
             job.DeadLetterResolved,
-            job.IsSynthetic);
+            job.IsSynthetic,
+            job.SlaClass,
+            SlaClasses.Label(job.SlaClass));
     }
 }

@@ -26,6 +26,8 @@ export interface JobSummary {
   requeueCount: number
   deadLetterResolved: boolean
   isSynthetic: boolean
+  slaClass: string | null
+  slaLabel: string | null
 }
 
 export interface Attempt {
@@ -99,6 +101,29 @@ export interface Status {
   successRatePercent: number
   retryRatePercent: number
   workerCount: number
+  activeOutages: Outage[]
+  valueProtectedCents: number
+  recoveredFromCrashedWorkerCount: number
+  recoveredFromCrashedWorkerCents: number
+}
+
+export interface MorningReport {
+  generatedAtUtc: string
+  nextCheckUtc: string
+  checkIntervalRealSeconds: number
+  verdict: 'Idle' | 'Healthy' | 'NeedsAttention' | 'Critical'
+  headline: string
+  summary: string
+  totalJobs: number
+  succeededCount: number
+  breachedCount: number
+  needsHumanCount: number
+  atRiskCount: number
+  deadLetterCount: number
+  dollarsAtRiskCents: number
+  duplicatesPreventedCount: number
+  duplicatesPreventedCents: number
+  topIssues: RootCauseGroup[]
   activeOutages: Outage[]
 }
 
