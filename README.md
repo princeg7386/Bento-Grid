@@ -233,9 +233,12 @@ a demo replay is identical. Configurable globally and per job type in `appsettin
 2. **The sort.** The list is ordered by time to breach, not by when anything failed. A
    $95,000 disbursement 40 minutes out sits above a $4 encounter that failed thirty seconds ago.
 
-3. **One cause, twenty symptoms.** A root-cause card reads `state-b-mmis · endpoint outage · 20
-   jobs`, tagged **↻ HEALING**. One endpoint explains twenty rows, and it is recovering on its
-   own. Click it to filter the list. Priya does not need to do anything about these.
+3. **One cause, dozens of symptoms.** A root-cause card reads `state-b-mmis · endpoint outage`
+   over about forty jobs, tagged **↻ HEALING**. One endpoint explains all of them, and it is
+   recovering on its own — the outage lifts roughly 24 real seconds in, and the stalled jobs
+   succeed on their fifth attempt. Click the card to filter the list. Priya does not need to do
+   anything about any of it. (The seeded scenario stalls 20 jobs deliberately; the rest are
+   ordinary encounter submissions that happen to target the same endpoint.)
 
 4. **A permanent failure.** Open one of the eight dead letters. The drawer shows the masked
    error, the attempt timeline, the upcoming backoff schedule, and a plain-English cause with a
@@ -248,9 +251,14 @@ a demo replay is identical. Configurable globally and per job type in `appsettin
    **duplicates prevented** counter in the banner shows the disbursements the downstream ledger
    refused to apply twice.
 
-6. **Kill a worker.** Press **Kill a worker mid-job**. Its lease lapses, the reaper hands the
-   job to another worker within a second, the attempt timeline records a `LeaseExpired` attempt,
-   and the payment still settles exactly once.
+6. **Kill a worker.** The seeded scenario already contains one: a payment job left `Running`
+   by `worker-3` with a lease that has already lapsed. Within a second the reaper reclaims it,
+   another worker runs attempt 2, and the timeline reads `attempt 1 worker-3 LeaseExpired` then
+   `attempt 2 worker-2 Succeeded` — one disbursement, full history kept.
+
+   **Kill a worker mid-job** does the same thing to a job running right now. It only lands if a
+   job is genuinely in flight when you press it: jobs finish in milliseconds, so if the queue has
+   drained it returns `409` and tells you to try again while it is busy.
 
 ---
 
@@ -292,6 +300,11 @@ The things that actually took the work:
 - **`TimeProvider` everywhere**, including `Task.Delay(delay, timeProvider, ct)`. Tests use
   `FakeTimeProvider` and `Advance()` to test backoff, retries and deadline breaches without
   waiting.
+- **The default time scale is 20×**, so a four-hour cycle plays out in twelve real minutes and a
+  45-second backoff waits 2.25 seconds. The dashboard can change it from 1× to 600× live. The
+  value is not arbitrary: it has to leave the seeded outage shorter than the retry budget of the
+  jobs stuck behind it, or the demo's self-healing endpoint turns into a pile of dead letters
+  (see [docs/WHAT_BROKE.md](docs/WHAT_BROKE.md)).
 - **Idempotency is enforced by the database.** A `UNIQUE` index on the ledger's key, written
   with `ON CONFLICT DO NOTHING`; zero rows affected means "already applied". The ledger write and
   the job state change share one transaction. Requeue is a conditional

@@ -168,3 +168,71 @@ deterministic however the race lands. It also now asserts the requeue actually w
 
 **Lesson:** when asserting a concurrency invariant, pick a fixture whose terminal state is
 actually terminal. A self-resurrecting job has no stable count to assert.
+
+## 9. The self-healing outage healed nothing
+
+**Symptom.** The first end-to-end run of the demo looked wrong in a way no test had caught. The
+`state-b-mmis` outage was supposed to stall about twenty encounter submissions and then let them
+recover. Instead:
+
+```
+risk        type                   at stake   to deadline  state
+Breached    EncounterSubmission    $  787.60           -7  DeadLettered
+NeedsHuman  EncounterSubmission    $  440.44           20  DeadLettered
+NeedsHuman  EncounterSubmission    $  348.74           46  DeadLettered
+...
+```
+
+Every stalled job had dead-lettered with `endpoint_outage`. Demo step 3 — "one endpoint explains
+these, and it is healing itself" — demonstrated the exact opposite.
+
+**Cause.** Arithmetic, not logic. The outage was seeded at 25 simulated minutes, which at the
+then-default 60× scale is 25 real seconds. An encounter submission's backoff curve (45s base,
+doubling, 6 attempts) spends its entire retry budget in about 38 real seconds at that scale, and
+its **last** attempt lands at t≈23s — two seconds before the outage lifts. Every job exhausted
+its retries inside the outage window and dead-lettered, one attempt short.
+
+Nothing in the test suite caught this because every test sets `TimeScale = 1` deliberately, to
+keep backoff arithmetic literal. The bug lived entirely in the relationship between two
+configuration values that no test compared.
+
+**Fix.** Three changes, and one thing deliberately not changed:
+
+- Outage shortened to **8 simulated minutes**, so it lifts while attempts remain.
+- Encounter submissions given a seventh attempt (`MaxRetries` 5 → 6) for headroom.
+- Default `TimeScale` lowered from **60× to 20×**. At 60× the entire story — outage, recovery,
+  dead letters, duplicates — was over within about ten real seconds, far too fast for a human to
+  watch. At 20× the cycle window is twelve real minutes, the outage is visible for 24 seconds,
+  and the stalled jobs recover on attempt 5 with two attempts to spare.
+- The *seeded* stall count stayed at 20, but the root-cause card legitimately shows about forty
+  jobs, because ordinary encounter submissions also target `state-b-mmis`. The README's demo
+  script was corrected rather than the data.
+
+Verified by watching it: 42 jobs `RetryScheduled` behind the endpoint with `healing=true` at
+t+5s, and 292 of 300 succeeded with only the 8 permanent failures dead-lettered by t+95s.
+
+**Lesson:** a demo's believability can depend on two config values agreeing with each other, and
+a test suite that pins one of them to a constant will never notice. The seeder now carries the
+arithmetic in a comment next to the value.
+
+## 10. `kill-worker` usually loses its own race
+
+**Symptom.** `POST /api/demo/kill-worker` reported killing `worker-4` on job #307, and the job
+then showed `attempts=1, state=Succeeded, outcome=Succeeded` — no lease expiry, no recovery.
+
+**Cause.** Not a bug. Jobs finish in about 15 milliseconds, so between the endpoint expiring the
+lease and the reaper's next pass (up to a second later), the original worker had already
+committed. Its conditional completion `WHERE State = 'Running' AND ClaimedBy = @worker` still
+matched, because the reaper had not run yet, so the commit was legitimate.
+
+**Resolution.** Left as is, because the behaviour is correct — and it is the seeded orphan, not
+this endpoint, that makes the recovery story deterministic. That job is planted `Running` with an
+already-lapsed lease, so the reaper always finds it:
+
+```
+attempt 1  worker-3   LeaseExpired     lease_expired
+attempt 2  worker-2   Succeeded
+```
+
+The README now says the endpoint only lands while the queue is genuinely busy, and points at the
+seeded orphan as the reliable demonstration.

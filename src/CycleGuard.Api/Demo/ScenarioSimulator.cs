@@ -51,8 +51,15 @@ public sealed class ScenarioSimulator(
         simulation.CycleCloseTicks = cycleCloseTicks;
         simulation.ScenarioSeededTicks = nowTicks;
 
-        // state-b-mmis is down for the first 25 minutes of cycle time, then recovers on its own.
-        var outageRecoversAt = nowTicks + RealTicks(25 * 60);
+        // state-b-mmis is down for the first 8 minutes of cycle time, then recovers on its own.
+        //
+        // This duration is load-bearing, not decorative. An encounter submission's backoff
+        // curve (45s base, doubling, 7 attempts) spends its whole retry budget in about 160
+        // real seconds at the default 20x scale. Eight simulated minutes is 24 real seconds,
+        // so the stalled jobs recover on attempt 5 with two attempts to spare. An outage that
+        // outlives the retry budget turns the twenty "healing" jobs into twenty dead letters,
+        // which is the opposite of the point being demonstrated. See docs/WHAT_BROKE.md.
+        var outageRecoversAt = nowTicks + RealTicks(8 * 60);
         outages.ScheduleOutage(JobTypeCatalog.StateBMmis, outageRecoversAt);
 
         var jobs = new List<Job>(demo.JobCount);

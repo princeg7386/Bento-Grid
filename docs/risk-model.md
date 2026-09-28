@@ -57,8 +57,8 @@ not be penalised for backoff it may never need.
 ## A note on time scale
 
 The at-risk threshold is expressed in the **simulated** minutes an analyst reads on the
-dashboard, not in real seconds. At the default time scale of 60×, a 45 simulated-minute
-threshold is 45 real seconds of slack:
+dashboard, not in real seconds. At the default time scale of 20×, a 45 simulated-minute
+threshold is 135 real seconds of slack:
 
 ```
 atRiskThresholdRealSeconds = thresholdMinutes * 60 / timeScale
