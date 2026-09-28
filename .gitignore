@@ -47,3 +47,6 @@ msbuild.log
 # Vite
 .vite/
 vite.config.ts.timestamp-*
+
+# Local editor/tooling launch config (contains machine-specific paths)
+.claude/launch.json
