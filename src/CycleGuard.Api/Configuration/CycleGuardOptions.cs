@@ -98,4 +98,10 @@ public sealed class DemoOptions
     /// demo can show raw versus masked. Raw text is never persisted either way.
     /// </summary>
     public bool ExposeRawErrors { get; set; } = true;
+
+    /// <summary>
+    /// Fake network latency per downstream call, so the dashboard has visible motion.
+    /// Set to 0 in tests: a real delay on a fake clock would otherwise never elapse.
+    /// </summary>
+    public int SimulatedLatencyMs { get; set; } = 15;
 }

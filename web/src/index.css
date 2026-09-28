@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+
+/*
+  An ops console, not a marketing page: near-black ground, one amber accent for the cycle
+  clock, and risk expressed with a glyph and a word so it never depends on colour alone.
+*/
+@theme {
+  --color-ink-950: #07090d;
+  --color-ink-900: #0b0e14;
+  --color-ink-850: #10141d;
+  --color-ink-800: #151a25;
+  --color-ink-700: #1d2431;
+  --color-ink-600: #2a3342;
+  --color-ink-400: #5c6a80;
+  --color-ink-300: #8b97a8;
+  --color-ink-200: #b9c2d0;
+  --color-ink-100: #e6e9ef;
+
+  --color-signal-breach: #ff5a5f;
+  --color-signal-human: #c084fc;
+  --color-signal-risk: #ffb020;
+  --color-signal-track: #38bdf8;
+  --color-signal-done: #34d399;
+
+  --font-mono: 'SFMono-Regular', 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-feature-settings: 'tnum' 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular numerals everywhere numbers change, so countdowns do not jitter. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-ink-900);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-700);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-600);
+}
+
+@keyframes cg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.cg-pulse {
+  animation: cg-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes cg-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+.cg-sweep {
+  animation: cg-sweep 1.4s linear infinite;
+}

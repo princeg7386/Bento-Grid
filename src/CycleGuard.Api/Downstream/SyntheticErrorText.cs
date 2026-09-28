@@ -75,14 +75,16 @@ public static class SyntheticErrorText
             _ => $"Unclassified failure from {endpoint} for batch {payload.BatchId} (MemberId: {member.Id})."
         };
 
-        var stackTrace = $"""
-            CycleGuard.Downstream.{EndpointClassName(endpoint)}Client+SubmitFailure: {message}
-               at CycleGuard.Downstream.{EndpointClassName(endpoint)}Client.SubmitAsync(Batch batch, MemberRecord member) in /src/downstream/{endpoint}/Client.cs:line 148
+        // Double-dollar raw string: interpolation is {{expr}}, so a literal brace stays a
+        // single brace and the context block can look like the JSON these systems return.
+        var stackTrace = $$"""
+            CycleGuard.Downstream.{{EndpointClassName(endpoint)}}Client+SubmitFailure: {{message}}
+               at CycleGuard.Downstream.{{EndpointClassName(endpoint)}}Client.SubmitAsync(Batch batch, MemberRecord member) in /src/downstream/{{endpoint}}/Client.cs:line 148
                at CycleGuard.Downstream.SubmissionPipeline.DispatchAsync(Batch batch) in /src/downstream/Pipeline.cs:line 62
                at CycleGuard.Workers.JobExecutor.ExecuteAsync(Job job, String workerId) in /src/workers/JobExecutor.cs:line 91
             --- context ---
-               batch={payload.BatchId} endpoint={endpoint} memberCount={payload.MemberCount}
-               member={{ MemberId: {member.Id}, Name: {member.Name}, DOB: {member.Dob}, SSN: {member.Ssn}, phone={member.Phone}, email={member.Email} }}
+               batch={{payload.BatchId}} endpoint={{endpoint}} memberCount={{payload.MemberCount}}
+               member={ MemberId: {{member.Id}}, Name: {{member.Name}}, DOB: {{member.Dob}}, SSN: {{member.Ssn}}, phone={{member.Phone}}, email={{member.Email}} }
             """;
 
         return (message, stackTrace);

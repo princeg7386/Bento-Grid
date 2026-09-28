@@ -1,5 +1,7 @@
+using CycleGuard.Api.Configuration;
 using CycleGuard.Api.Domain;
 using CycleGuard.Api.Queue;
+using Microsoft.Extensions.Options;
 
 namespace CycleGuard.Api.Downstream;
 
@@ -17,14 +19,20 @@ public interface IDownstreamGateway
 public sealed class DownstreamSimulator(
     OutageRegistry outages,
     TimeProvider timeProvider,
+    IOptions<CycleGuardOptions> options,
     ILogger<DownstreamSimulator> logger) : IDownstreamGateway
 {
     public async Task<ExecutionOutcome> ExecuteAsync(Job job, CancellationToken cancellationToken = default)
     {
         var payload = JobPayloadCodec.Parse(job.Payload);
 
-        // A little simulated network latency so the dashboard has something to show.
-        await Task.Delay(TimeSpan.FromMilliseconds(15), timeProvider, cancellationToken);
+        // A little simulated network latency so the dashboard has something to show. Zero in
+        // tests, because a real wait on a fake clock would never elapse.
+        var latencyMs = options.Value.Demo.SimulatedLatencyMs;
+        if (latencyMs > 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(latencyMs), timeProvider, cancellationToken);
+        }
 
         // 1. A hard endpoint outage beats anything the job itself was scripted to do.
         if (outages.IsDown(job.DownstreamEndpoint, timeProvider.UtcTicks()))

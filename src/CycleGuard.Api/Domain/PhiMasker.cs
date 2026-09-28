@@ -93,7 +93,10 @@ public static partial class PhiMasker
     [GeneratedRegex(@"\b\d{1,2}/\d{1,2}/\d{4}\b", RegexOptions.Compiled)]
     private static partial Regex UsDateRegex();
 
-    [GeneratedRegex(@"\b(Name|PatientName|patient_name|SubscriberName)\b\s*[:=]\s*(?:""[^""\n]*""|[^,;)\]}\n]+)",
+    // The lookahead sits immediately after the separator, where its position is fixed, and it
+    // swallows the whitespace itself. Placed after \s* instead, the engine simply backtracks
+    // \s* to zero width and matches anyway, which appends a second bracket on every pass.
+    [GeneratedRegex(@"\b(Name|PatientName|patient_name|SubscriberName)\b\s*[:=](?!\s*\[[A-Z\-]*REDACTED\])\s*(?:""[^""\n]*""|[^,;)\]}\n]+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex NameFieldRegex();
 
