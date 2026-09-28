@@ -1,0 +1,49 @@
+# Build output
+bin/
+obj/
+dist/
+build/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Databases (all CycleGuard data is synthetic, but never commit it)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+secrets.json
+
+# Editors / IDEs
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Test + tooling artifacts
+TestResults/
+coverage/
+*.trx
+*.coverage
+.nuget/
+msbuild.log
+
+# Vite
+.vite/
+vite.config.ts.timestamp-*
