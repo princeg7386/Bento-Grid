@@ -484,6 +484,31 @@ every other decision in this codebase (see ADR-4). This is a health check for th
 replacement for the risk model: it summarizes the same numbers the dashboard shows, for a
 person -- or a pager -- to read without doing the analysis themselves.
 
+A **🔊 Read report** button in the dashboard header fetches this endpoint and reads the
+headline and summary aloud with the browser's built-in speech synthesis -- no backend change,
+no AI narration, just the same deterministic sentence spoken instead of read.
+
+## Value protected
+
+The banner shows two headline numbers side by side: **dollars at risk** (exposure right now)
+and **value protected** (money this system has already saved). The second number sums two
+things, deliberately kept separate from "at risk" so the two are never confused:
+
+- Duplicate disbursements the downstream ledger refused to apply twice
+- Payments recovered after their worker crashed mid-job, that the lease reaper handed to
+  another worker instead of leaving stalled forever
+
+Not folded in: jobs that merely succeeded after a retry. That would count nearly every
+transient timeout and dilute what is meant to be a specific, earned number.
+
+## Regulatory SLA badges
+
+Encounter submissions -- the job type closest to a prior-authorization-style decision -- carry
+an `⏱ 72h expedited` or `⏱ 7-day standard` badge, tying the abstract `AtRisk` risk level back
+to the actual regulatory deadlines the persona operates under. Payment runs and claims
+adjudication are deliberately left untagged: they answer to the payment cycle close and to no
+cited regulatory deadline, and tagging them would not be honest.
+
 ## Further reading
 
 - [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) — CycleGuard explained from zero, for anyone
