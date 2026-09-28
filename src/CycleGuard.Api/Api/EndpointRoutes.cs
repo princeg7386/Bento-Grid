@@ -126,6 +126,30 @@ public static class EndpointRoutes
                 Results.Ok(await reads.GetGroupsAsync(ct)))
             .WithSummary("Root-cause groups by (endpoint, failure signature).");
 
+        api.MapGet("/morning-report", (MorningReportStore store, TimeProvider timeProvider) =>
+            {
+                // The HealthMonitorService background job computes this on its own schedule;
+                // this endpoint only ever hands back its most recent answer. The tiny window
+                // between the app accepting its first request and that job finishing its
+                // first pass is the only time this can be null.
+                var report = store.Latest ?? new MorningReportDto(
+                    timeProvider.UtcNow(),
+                    timeProvider.UtcNow(),
+                    0,
+                    nameof(HealthVerdict.Idle),
+                    "The monitor is starting up.",
+                    "The first health check has not completed yet. Try again in a few seconds.",
+                    0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    [],
+                    []);
+
+                return Results.Ok(report);
+            })
+            .WithSummary("The unattended monitor's most recent verdict: check this one endpoint, no analysis required.")
+            .WithDescription(
+                "Computed by a background job on a fixed real-world interval (CycleGuard:Monitor:IntervalSeconds), " +
+                "independent of the demo's compressed clock. Verdict is Idle, Healthy, NeedsAttention or Critical.");
+
         api.MapGet("/state-machine", () => Results.Ok(
                 JobStateMachine.Table.ToDictionary(
                     pair => pair.Key.ToString(),

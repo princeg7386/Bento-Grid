@@ -153,10 +153,22 @@ public sealed class JobQueue(
     }
 
     /// <summary>Open the attempt row for a freshly claimed job. Only the claim holder gets here.</summary>
-    public async Task<JobAttempt> RecordAttemptStartAsync(Job job, string workerId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Returns null if the job no longer exists. That only happens when a demo "reset" runs
+    /// concurrently with a worker that already claimed the job -- reset deletes the Jobs row
+    /// out from under it. Checked explicitly rather than letting the insert throw a foreign-key
+    /// violation: the caller treats a vanished job as "abandon this attempt", not as a crash.
+    /// See docs/WHAT_BROKE.md.
+    /// </summary>
+    public async Task<JobAttempt?> RecordAttemptStartAsync(Job job, string workerId, CancellationToken cancellationToken = default)
     {
         var nowTicks = timeProvider.UtcTicks();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        if (!await dbContext.Jobs.AsNoTracking().AnyAsync(j => j.Id == job.Id, cancellationToken))
+        {
+            return null;
+        }
 
         var attempt = new JobAttempt
         {

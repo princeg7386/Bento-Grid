@@ -17,6 +17,14 @@ public sealed class JobExecutor(
     public async Task ExecuteAsync(Job job, string workerId, CancellationToken cancellationToken)
     {
         var attempt = await queue.RecordAttemptStartAsync(job, workerId, cancellationToken);
+        if (attempt is null)
+        {
+            // The job was deleted out from under this claim -- only a demo "reset" running
+            // concurrently with a live worker does this. Nothing to run or record; the worker
+            // just goes back for the next job.
+            logger.LogInformation("Job {JobId} vanished before its attempt could start; abandoning it.", job.Id);
+            return;
+        }
 
         ExecutionOutcome outcome;
         try

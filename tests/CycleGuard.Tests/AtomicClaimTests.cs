@@ -203,6 +203,29 @@ public class AtomicClaimTests
         Assert.Equal(30_000L, Convert.ToInt64(await busyCommand.ExecuteScalarAsync()));
     }
 
+    [Fact]
+    public async Task AJobDeletedAfterClaimIsAbandonedRatherThanCrashingTheWorker()
+    {
+        // Simulates a demo "reset" racing a worker that already claimed the job: the Jobs
+        // row is gone by the time the worker tries to record its attempt. See docs/WHAT_BROKE.md.
+        await using var harness = await QueueHarness.CreateAsync();
+
+        var job = await harness.EnqueueAsync();
+        var claimed = await harness.Queue.TryClaimAsync("worker-1");
+        Assert.NotNull(claimed);
+
+        await using (var dbContext = await harness.Factory.CreateDbContextAsync())
+        {
+            await dbContext.Database.ExecuteSqlRawAsync("DELETE FROM Jobs WHERE Id = {0};", claimed!.Id);
+        }
+
+        var attempt = await harness.Queue.RecordAttemptStartAsync(claimed!, "worker-1");
+        Assert.Null(attempt);
+
+        // The executor must not throw either -- it just abandons the vanished job.
+        await harness.Executor.ExecuteAsync(claimed!, "worker-1", CancellationToken.None);
+    }
+
     private static string Flatten(Exception exception)
     {
         var parts = new List<string>();

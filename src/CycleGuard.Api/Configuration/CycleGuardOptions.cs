@@ -15,6 +15,8 @@ public sealed class CycleGuardOptions
     public RiskOptions Risk { get; set; } = new();
 
     public DemoOptions Demo { get; set; } = new();
+
+    public MonitorOptions Monitor { get; set; } = new();
 }
 
 public sealed class WorkerOptions
@@ -104,4 +106,16 @@ public sealed class DemoOptions
     /// Set to 0 in tests: a real delay on a fake clock would otherwise never elapse.
     /// </summary>
     public int SimulatedLatencyMs { get; set; } = 15;
+}
+
+/// <summary>
+/// The unattended health monitor: a background job that watches the queue on a fixed,
+/// real-world cadence (never the compressed demo clock — an operator reading this at
+/// 8:45am does not care that the demo clock is running at 20x) and keeps one verdict ready
+/// for <c>GET /api/morning-report</c>, so nobody has to interpret raw counts by hand.
+/// </summary>
+public sealed class MonitorOptions
+{
+    /// <summary>How often the monitor re-checks the queue, in real seconds.</summary>
+    public int IntervalSeconds { get; set; } = 30;
 }

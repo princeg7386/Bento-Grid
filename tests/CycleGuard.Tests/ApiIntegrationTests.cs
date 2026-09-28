@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using CycleGuard.Api.Api;
 using CycleGuard.Api.Domain;
 using CycleGuard.Api.Downstream;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -40,6 +41,7 @@ public sealed class CycleGuardApp : WebApplicationFactory<Program>
         builder.UseSetting("CycleGuard:Demo:TimeScale", "100");
         builder.UseSetting("CycleGuard:Demo:SimulatedLatencyMs", "0");
         builder.UseSetting("CycleGuard:Demo:JobCount", "300");
+        builder.UseSetting("CycleGuard:Monitor:IntervalSeconds", "5");
     }
 
     public override async ValueTask DisposeAsync()
@@ -339,6 +341,40 @@ public class ApiIntegrationTests
 
         var bad = await client.PostAsJsonAsync("/api/demo/timescale", new { timeScale = 0.0 });
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheMorningReportIsIdleBeforeAnythingIsSeededAndReflectsRealFailuresAfter()
+    {
+        await using var app = new CycleGuardApp();
+        var client = app.CreateClient();
+
+        // Nothing has been seeded: this is what a person (or a pager) sees before any batch
+        // has ever run, and it must not be mistaken for a clean bill of health.
+        var idle = await client.GetFromJsonAsync<JsonElement>("/api/morning-report");
+        Assert.Equal(nameof(HealthVerdict.Idle), idle.GetProperty("verdict").GetString());
+
+        await client.PostAsync("/api/demo/scenarios/last-night", null);
+
+        // The monitor is a background job on its own schedule, not something this request
+        // triggers -- so this has to poll rather than assert immediately.
+        var report = await WaitForAsync(
+            async () => await client.GetFromJsonAsync<JsonElement>("/api/morning-report"),
+            r => r.GetProperty("verdict").GetString() != nameof(HealthVerdict.Idle),
+            "the monitor to notice the seeded scenario");
+
+        Assert.Equal(300, report.GetProperty("totalJobs").GetInt32());
+        Assert.True(report.GetProperty("dollarsAtRiskCents").GetInt64() > 0);
+        Assert.NotEmpty(report.GetProperty("headline").GetString()!);
+        Assert.NotEmpty(report.GetProperty("summary").GetString()!);
+
+        // Every seeded permanent failure is dead-lettered and unresolved, so the monitor
+        // cannot call this Healthy.
+        Assert.NotEqual(nameof(HealthVerdict.Healthy), report.GetProperty("verdict").GetString());
+        Assert.True(report.GetProperty("needsHumanCount").GetInt32() > 0);
+
+        // The report names its own cadence rather than leaving it implicit.
+        Assert.Equal(5, report.GetProperty("checkIntervalRealSeconds").GetInt32());
     }
 
     [Fact]

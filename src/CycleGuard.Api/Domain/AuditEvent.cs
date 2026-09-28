@@ -38,4 +38,5 @@ public static class AuditEventTypes
     public const string ScenarioSeeded = "ScenarioSeeded";
     public const string ScenarioReset = "ScenarioReset";
     public const string WorkerKilled = "WorkerKilled";
+    public const string MonitorVerdictChanged = "MonitorVerdictChanged";
 }

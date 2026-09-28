@@ -45,9 +45,11 @@ builder.Services.AddSingleton<JobQueue>();
 builder.Services.AddSingleton<JobExecutor>();
 builder.Services.AddSingleton<JobReadService>();
 builder.Services.AddSingleton<ScenarioSimulator>();
+builder.Services.AddSingleton<MorningReportStore>();
 
 builder.Services.AddHostedService<WorkerPoolService>();
 builder.Services.AddHostedService<LeaseReaperService>();
+builder.Services.AddHostedService<HealthMonitorService>();
 
 builder.Services.AddOpenApi();
 
