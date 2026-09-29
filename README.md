@@ -1,129 +1,122 @@
 # CycleGuard
 
-**Most job dashboards sort by when something failed. CycleGuard sorts by when it will cost you.**
+**Built for the Acentra Codeathon 2026**
+Team **BentoGrid** — Ramyapriya · Arshad · Neha · Prince
 
-An overnight batch-cycle console for Medicaid claims operations: a DB-backed job queue with
-exponential backoff, dead-lettering and lease recovery, wrapped in a dashboard that ranks
-stuck work by dollars and deadlines instead of by timestamp.
+> Most job dashboards sort by when something failed. CycleGuard sorts by when it will cost you.
 
-All data is synthetic. No real payer, provider, member or dollar figure appears anywhere in
-this repository.
+CycleGuard is an overnight batch-job monitoring system for healthcare claims and payment
+operations. It processes background jobs — claims adjudication, encounter submissions, payment
+disbursements — with automatic retries, exponential backoff, and dead-letter handling for
+failures that can't be fixed by retrying. What makes it different from a generic job queue:
+every job is ranked by **how much money it puts at risk and how soon it breaches its deadline**,
+not by when it happened to fail. A background monitor checks the whole system every 30 seconds
+on its own, so nobody has to open a dashboard to know whether last night went fine.
 
----
-
-## Who it is for
-
-**Priya, Claims & Payments Operations Analyst at a Medicaid services contractor.** She owns the
-overnight batch cycle: claims adjudication, encounter submissions to state systems, and payment
-runs. At 8:45am she has about thirty seconds to answer three questions:
-
-1. What is stuck?
-2. What will cost money?
-3. What will heal on its own without her?
-
-Two facts make those questions sharp. Her company publicly advertises that it has never missed
-a payment cycle. And prior-authorisation decisions now carry enforceable regulatory deadlines —
-72 hours expedited, 7 calendar days standard — so "late" is a compliance event, not an
-inconvenience.
-
-A conventional dashboard answers none of those three questions. It shows her a reverse-chronological
-list of failures, in which a $9,500 disbursement 40 minutes from its deadline sits below a $4
-encounter submission that failed more recently.
-
-**Priya is a hypothesis, built from public information about how Medicaid contractors and
-state MMIS systems work.** She is not a real person and was not interviewed. Treat the persona
-as a design constraint, not as research.
-
-## Prior art, honestly
-
-CycleGuard is not the first thing to do most of this, and it would be dishonest to imply
-otherwise.
-
-- **Enterprise workload automation** (Control-M, AutoSys, Tidal and friends) has predicted
-  SLA and deadline breaches for years, with far more operational maturity than this.
-- **[Hangfire](https://www.hangfire.io/)** already gives .NET a persistent job queue with
-  automatic retries, a dashboard, and a requeue button. If you want a production job queue for
-  a .NET app, use Hangfire, not this.
-- **Temporal, Sidekiq Pro, Celery + Flower** and most cloud queue services cover retries,
-  backoff, dead-letter queues and visibility.
-
-What CycleGuard adds is a **healthcare-operations layer** that those tools leave to you:
-
-| | Generic job dashboard | CycleGuard |
-| --- | --- | --- |
-| Primary sort | When it failed | **When it breaches a deadline** |
-| Failure grouping | By job class or exception type | **By downstream endpoint + failure signature** |
-| Business impact | Absent | **Dollars at stake per job, summed by risk** |
-| Error text | Raw, whatever the exception said | **PHI-masked before it is persisted or returned** |
-| Explanation | Stack trace | **Deterministic plain-English cause and action** |
-| Requeue safety | Re-runs the job | **Reuses the idempotency key; downstream refuses a second effect** |
-| Scheduling | FIFO or priority | **Earliest deadline first** |
-
-The pieces are individually unremarkable. The combination — and specifically making
-*time to money* the organising principle rather than an optional column — is the argument.
+All data in this project is synthetic. No real payer, provider, member, or dollar figure appears
+anywhere in this repository.
 
 ---
 
-## Running it
+## Quick start
 
-### Prerequisites
-
-- **.NET 10 SDK** (`dotnet --version` should print `10.0.x`)
-- **Node.js 20 or newer** (`node --version`)
-
-If the SDK lives under `~/.dotnet` and Node under `nvm`, `run.sh` finds both without any
-shell-profile changes.
-
-### One command
+Needs the **.NET 10 SDK** and **Node.js 20+** on your machine.
 
 ```bash
 ./run.sh
 ```
 
-That starts the API on **http://localhost:5179** (Swagger at `/swagger`) and the dashboard on
-**http://localhost:5173**, and stops both on Ctrl+C. First run installs the dashboard's npm
-dependencies.
+That starts the API on **http://localhost:5179** (Swagger docs at `/swagger`) and the dashboard
+on **http://localhost:5173**, together, in one terminal. First run installs the dashboard's npm
+dependencies automatically.
 
-Then open http://localhost:5173 and click **Simulate last night**.
+Open **http://localhost:5173** and click **Simulate last night** — that seeds ~300 jobs with a
+realistic overnight failure story (an outage, some permanent failures, a duplicate payment
+attempt, a crashed worker) and you can watch the whole system react in real time.
 
-### Two terminals, if you prefer
-
-```bash
-# terminal 1 — API
-dotnet run --project src/CycleGuard.Api/CycleGuard.Api.csproj --urls http://localhost:5179
-```
-
-```bash
-# terminal 2 — dashboard
-cd web && npm install && npm run dev
-```
-
-### Tests
+Prefer two terminals, or want the exact demo walkthrough? See
+**[docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)**. Never touched .NET before? See
+**[docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md)** — the whole project explained from zero.
 
 ```bash
 dotnet test
 ```
 
-### Driving it from the command line
-
-```bash
-curl -s -X POST http://localhost:5179/api/demo/scenarios/last-night | python3 -m json.tool
-```
-
-```bash
-curl -s 'http://localhost:5179/api/status' | python3 -m json.tool
-```
-
-```bash
-curl -s 'http://localhost:5179/api/jobs?risk=Breached&limit=5' | python3 -m json.tool
-```
-
-The demo is seeded from a fixed seed (`CycleGuard:Demo:Seed`, default `20260115`), so the same
-story appears every single run.
+runs the full test suite (150 tests, all green).
 
 ---
 
-## Architecture
+## Features
+
+### Reliable background job processing
+- ASP.NET Core `BackgroundService` workers process jobs continuously, with no manual triggering
+- Automatic retry with **exponential backoff** (`base × 2^attempt`, capped, with jitter)
+- **Configurable maximum retries**, both globally and per job type (payments get more retries
+  than claims, for example)
+- **Dead-letter handling**: permanent failures (a validation error that will never succeed) skip
+  retries entirely and go straight to a holding state for a human to review
+- **Atomic, race-free job claiming** — a single SQL statement means two workers can never grab
+  the same job, proven under 8 concurrent workers processing 300 jobs with zero double-processing
+- **Crash recovery**: if a worker dies mid-job, a separate background process notices within a
+  second and hands the job to another worker, with the full attempt history preserved
+- **Everything persists** to SQLite and survives an application restart
+
+### Risk-based prioritization (the core idea)
+- Jobs are sorted by **time-to-deadline-breach and dollars at risk**, not by when they failed —
+  a $95,000 payment 40 minutes from its deadline outranks a $4 job that failed 30 seconds ago
+- A five-level risk model (`Breached` → `NeedsHuman` → `AtRisk` → `OnTrack` → `Done`) catches
+  jobs that look fine on paper but are arithmetically doomed — see
+  **[docs/risk-model.md](docs/risk-model.md)**
+- **Root-cause grouping**: one endpoint outage that's stalling 40 jobs shows as one card, not 40
+  separate alerts, and is tagged `↻ Healing` if it's already recovering on its own
+- **Regulatory SLA badges** (`72h expedited` / `7-day standard`) tie risk directly to the actual
+  compliance deadlines the jobs answer to
+
+### Safety guarantees that are actually enforced
+- **A requeued or retried payment can never be applied twice** — enforced by a database
+  constraint, not a promise, and verified by firing three simultaneous requeue requests and
+  confirming exactly one payment goes through
+- **PHI masking**: names, dates of birth, SSNs, phone numbers, and emails are stripped from
+  every error message before it's stored or returned — with a raw-vs-masked toggle in the UI to
+  show exactly what was removed
+- **Append-only audit trail** — every state change and every requeue is logged with who did it
+  and when
+
+### An unattended monitor, not just a dashboard
+- A background job re-checks the whole queue every 30 real seconds, independent of anyone
+  having a browser open
+- **One endpoint** (`GET /api/morning-report`) returns a single verdict — `Healthy`,
+  `NeedsAttention`, or `Critical` — plus the dollars at risk and the top root causes, so a
+  person (or an automated alert) can check status in one request with zero analysis
+- A **🔊 Read report** button speaks that report aloud using the browser's built-in speech
+  synthesis — no AI narration, just the same deterministic sentence spoken instead of read
+
+### A dashboard built to be read in 30 seconds
+- Live cycle countdown, dollars-at-risk, and a **value-protected** counter (money already saved
+  from duplicate payments and crash recovery) side by side
+- Risk-sorted job list with plain-English causes and suggested actions, not stack traces
+- Root-cause cards, a dead-letter view grouped by cause, and a job drawer with the full attempt
+  timeline and upcoming retry schedule
+- A simulation panel to seed the demo scenario, change time compression (1×–600×), kill a worker
+  mid-job, or reset — all live, no restart needed
+
+### Tested, not just demoed
+- **150 automated tests** (xUnit), covering backoff math, illegal state transitions, the
+  concurrency guarantee, crash recovery, every branch of the risk model, PHI masking (23+ table
+  cases), idempotent requeue under concurrency, and a full end-to-end HTTP test
+- A **deterministic seeded demo** — the same ~300-job scenario, byte-for-byte, every single run
+
+---
+
+## How it works
+
+In one paragraph: a **React dashboard** polls an **ASP.NET Core API** every 2 seconds. The API
+reads from a **SQLite database** that four background workers are continuously writing to — each
+worker atomically claims the job with the nearest deadline, tries it against a mock downstream
+system, and routes the result to success, retry, or dead-letter. Two more background jobs run
+alongside the workers: one recovers jobs from crashed workers, the other computes the health
+verdict for `/api/morning-report`. Nothing in the picture below changed from the first version
+of this system — it's the same architecture, just explained more plainly here.
 
 ```mermaid
 flowchart TB
@@ -165,7 +158,8 @@ flowchart TB
     QUEUE -- "ON CONFLICT DO NOTHING<br/>same transaction as state change" --> LED
 ```
 
-### How a job moves
+<details>
+<summary><strong>See exactly how one job moves through its states ▸</strong></summary>
 
 ```mermaid
 stateDiagram-v2
@@ -190,37 +184,10 @@ Anything not on that diagram throws `IllegalStateTransitionException`. The table
 at `GET /api/state-machine` and enforced by
 [`JobStateMachine`](src/CycleGuard.Api/Domain/JobStateMachine.cs).
 
----
+</details>
 
-## The risk model, in short
-
-Five levels, checked in order, first match wins:
-
-1. `Done` — succeeded, or cancelled by an operator
-2. `Breached` — past its deadline and not succeeded
-3. `NeedsHuman` — dead-lettered and unresolved
-4. `AtRisk` — thin slack, **or** the next retry lands after the deadline, **or** the remaining
-   backoff cannot fit before the deadline
-5. `OnTrack` — everything else
-
-The third `AtRisk` clause is the interesting one. A job can be inside its deadline, with retries
-left and a retry scheduled soon, and still be arithmetically doomed. That case is invisible to a
-dashboard sorted by failure time.
-
-Dollars at risk sums `AmountAtStakeCents` across `Breached`, `NeedsHuman` and `AtRisk`. Money is
-integer cents throughout; nothing about money is a float.
-
-Full rules and two worked examples: **[docs/risk-model.md](docs/risk-model.md)**.
-
-### Failure classes
-
-| Class | Examples | Behaviour |
-| --- | --- | --- |
-| `Transient` | timeout, HTTP 503, endpoint outage, expired lease | Retries with exponential backoff |
-| `Permanent` | missing member id, unknown provider id, invalid procedure code, closed bank account | Straight to dead-letter, **no retries** |
-
-`delay = min(cap, base × 2^(attempt−1))`, with optional jitter seeded from `(jobId, attempt)` so
-a demo replay is identical. Configurable globally and per job type in `appsettings.json`.
+**Built with:** ASP.NET Core (.NET 10) · C# · Entity Framework Core · SQLite · React 19 ·
+TypeScript · Vite · Tailwind CSS · xUnit
 
 ---
 
@@ -236,7 +203,7 @@ a demo replay is identical. Configurable globally and per job type in `appsettin
 3. **One cause, dozens of symptoms.** A root-cause card reads `state-b-mmis · endpoint outage`
    over about forty jobs, tagged **↻ HEALING**. One endpoint explains all of them, and it is
    recovering on its own — the outage lifts roughly 24 real seconds in, and the stalled jobs
-   succeed on their fifth attempt. Click the card to filter the list. Priya does not need to do
+   succeed on their fifth attempt. Click the card to filter the list. Nobody needs to do
    anything about any of it. (The seeded scenario stalls 20 jobs deliberately; the rest are
    ordinary encounter submissions that happen to target the same endpoint.)
 
@@ -260,9 +227,37 @@ a demo replay is identical. Configurable globally and per job type in `appsettin
    job is genuinely in flight when you press it: jobs finish in milliseconds, so if the queue has
    drained it returns `409` and tells you to try again while it is busy.
 
+Full step-by-step, both click-through and curl-only versions: **[docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)**.
+
 ---
 
-## API
+## The unattended monitor
+
+Nobody has to open the dashboard to know whether last night is fine. A background job
+(`HealthMonitorService`) checks the queue every 30 real seconds — on its own clock, not the
+demo's compressed one — and leaves one verdict ready at:
+
+```
+GET /api/morning-report
+```
+
+```json
+{
+  "verdict": "NeedsAttention",
+  "headline": "8 dead letters unresolved, 42 jobs at risk.",
+  "summary": "300 jobs total, 250 succeeded, 8 dead-lettered. ...",
+  "dollarsAtRiskCents": 19969055,
+  "topIssues": [ "up to 5 root causes, worst first" ]
+}
+```
+
+`verdict` is one of `Idle` (nothing seeded yet), `Healthy`, `NeedsAttention`, or `Critical`
+(something has already missed its deadline) — deterministic rules, no AI, same convention as
+every other decision in this codebase. This is a health check for the queue, not a replacement
+for the risk model: it summarizes the same numbers the dashboard shows, for a person — or a
+pager — to read without doing the analysis themselves.
+
+## API reference
 
 | Method | Route | Purpose |
 | --- | --- | --- |
@@ -275,19 +270,91 @@ a demo replay is identical. Configurable globally and per job type in `appsettin
 | `GET` | `/api/groups` | Root-cause groups by (endpoint, failure signature) |
 | `GET` | `/api/state-machine` | The legal transition table |
 | `GET` | `/api/causes` | The failure-signature → plain-English rule table |
+| `GET` | `/api/morning-report` | The unattended monitor's latest verdict |
 | `POST` | `/api/demo/scenarios/last-night` | Seed the deterministic overnight scenario |
 | `POST` | `/api/demo/reset` | Clear everything |
 | `POST` | `/api/demo/timescale` | Change time compression (1–3600) |
 | `POST` | `/api/demo/kill-worker` | Expire a running payment job's lease |
-| `GET` | `/api/morning-report` | The unattended monitor's latest verdict: `Idle`/`Healthy`/`NeedsAttention`/`Critical` |
 
-Swagger UI at `/swagger`.
+Full interactive docs with a "try it" button: **`/swagger`** once the API is running.
+
+## Repository layout
+
+```
+src/CycleGuard.Api/
+  Domain/        job model, state machine, backoff, risk, PHI masking, cause rules
+  Data/          EF Core context, SQLite pragma interceptor, WAL bootstrapper
+  Queue/         atomic claim, retry scheduling, dead-lettering, safe requeue
+  Downstream/    mock endpoints, outage registry, synthetic error text, raw-error vault
+  Workers/       worker pool, job executor, lease reaper, health monitor
+  Demo/          seeded 'last night' scenario
+  Api/           minimal API routes, DTOs, read/query service
+web/             React + Vite + TypeScript + Tailwind dashboard
+tests/           xUnit suite (150 tests)
+docs/            risk model, decisions, demo script, project guide, bugs hit while building
+```
 
 ---
 
-## Engineering notes
+<details>
+<summary><strong>Who this was designed for ▸</strong></summary>
 
-The things that actually took the work:
+**Priya, Claims & Payments Operations Analyst at a Medicaid services contractor.** She owns the
+overnight batch cycle: claims adjudication, encounter submissions to state systems, and payment
+runs. At 8:45am she has about thirty seconds to answer three questions:
+
+1. What is stuck?
+2. What will cost money?
+3. What will heal on its own without her?
+
+Two facts make those questions sharp. Her company publicly advertises that it has never missed
+a payment cycle. And prior-authorisation decisions now carry enforceable regulatory deadlines —
+72 hours expedited, 7 calendar days standard — so "late" is a compliance event, not an
+inconvenience.
+
+A conventional dashboard answers none of those three questions. It shows her a
+reverse-chronological list of failures, in which a $9,500 disbursement 40 minutes from its
+deadline sits below a $4 encounter submission that failed more recently.
+
+**Priya is a hypothesis, built from public information about how Medicaid contractors and
+state MMIS systems work.** She is not a real person and was not interviewed. Treat the persona
+as a design constraint, not as research.
+
+</details>
+
+<details>
+<summary><strong>Prior art — how this compares to existing tools ▸</strong></summary>
+
+CycleGuard is not the first thing to do most of this, and it would be dishonest to imply
+otherwise.
+
+- **Enterprise workload automation** (Control-M, AutoSys, Tidal and friends) has predicted
+  SLA and deadline breaches for years, with far more operational maturity than this.
+- **[Hangfire](https://www.hangfire.io/)** already gives .NET a persistent job queue with
+  automatic retries, a dashboard, and a requeue button. If you want a production job queue for
+  a .NET app, use Hangfire, not this.
+- **Temporal, Sidekiq Pro, Celery + Flower** and most cloud queue services cover retries,
+  backoff, dead-letter queues and visibility.
+
+What CycleGuard adds is a **healthcare-operations layer** that those tools leave to you:
+
+| | Generic job dashboard | CycleGuard |
+| --- | --- | --- |
+| Primary sort | When it failed | **When it breaches a deadline** |
+| Failure grouping | By job class or exception type | **By downstream endpoint + failure signature** |
+| Business impact | Absent | **Dollars at stake per job, summed by risk** |
+| Error text | Raw, whatever the exception said | **PHI-masked before it is persisted or returned** |
+| Explanation | Stack trace | **Deterministic plain-English cause and action** |
+| Requeue safety | Re-runs the job | **Reuses the idempotency key; downstream refuses a second effect** |
+| Scheduling | FIFO or priority | **Earliest deadline first** |
+
+The pieces are individually unremarkable. The combination — and specifically making
+*time to money* the organising principle rather than an optional column — is the argument.
+
+</details>
+
+<details>
+<summary><strong>Engineering deep-dive — what actually took the work ▸</strong></summary>
 
 - **The claim is one statement.** `UPDATE Jobs SET ... WHERE Id = (SELECT ... ORDER BY
   DeadlineTicks LIMIT 1) RETURNING *`. No read-then-write anywhere on the hot path, so two
@@ -312,23 +379,18 @@ The things that actually took the work:
   `UPDATE ... WHERE State = 'DeadLettered'`, so three simultaneous requeues produce exactly one
   winner.
 
-### Tests
+**Test coverage:** backoff maths and cap · retry cutoff and dead-letter routing (transient vs
+permanent) · illegal state transitions · atomic claim under concurrency (300 jobs, 8 workers,
+zero double processing) · zero `SQLITE_BUSY` under eight concurrent writers ·
+earliest-deadline-first ordering · lease expiry recovery · every branch of the risk model · PHI
+masking (23 table cases plus multi-field and stack-trace cases) · three concurrent requeues
+producing exactly one disbursement · and an end-to-end HTTP test where a fail-twice-then-succeed
+job shows the expected attempt sequence.
 
-```
-dotnet test
-```
+</details>
 
-Covers: backoff maths and cap · retry cutoff and dead-letter routing (transient vs permanent) ·
-illegal state transitions · atomic claim under concurrency (300 jobs, 8 workers, zero double
-processing) · zero `SQLITE_BUSY` under eight concurrent writers · earliest-deadline-first
-ordering · lease expiry recovery · every branch of the risk model · PHI masking (23 table cases
-plus multi-field and stack-trace cases) · three concurrent requeues producing exactly one
-disbursement · and an end-to-end HTTP test where a fail-twice-then-succeed job shows the
-expected attempt sequence.
-
----
-
-## ADRs
+<details>
+<summary><strong>Architecture decisions (ADRs) ▸</strong></summary>
 
 ### ADR-1: A database-backed queue, not a message broker
 
@@ -351,8 +413,8 @@ infrastructure.
 
 **Decision.** Workers claim the ready job with the nearest deadline, not the oldest.
 
-**Why.** FIFO optimises for fairness. Priya is not trying to be fair to jobs; she is trying not
-to miss a payment cycle or a 72-hour prior-authorisation deadline. EDF is the classic optimal
+**Why.** FIFO optimises for fairness. This system is not trying to be fair to jobs; it is trying
+not to miss a payment cycle or a 72-hour prior-authorisation deadline. EDF is the classic optimal
 policy when the objective is minimising deadline misses.
 
 Concretely: with a thousand jobs queued and one payment run 40 minutes from cycle close, FIFO
@@ -389,9 +451,9 @@ is persisted, showing raw versus masked in the demo needs an in-memory side chan
 ### ADR-4: No AI in retry, risk or requeue decisions
 
 **Decision.** Every decision is a deterministic rule. Backoff is arithmetic. Risk is an ordered
-rule list. Failure classification is a lookup table. Plain-English causes come from a hand-written
-map from signature to sentence. There is no model, no scoring, no inference anywhere in this
-codebase.
+rule list. Failure classification is a lookup table. Plain-English causes come from a
+hand-written map from signature to sentence. There is no model, no scoring, no inference
+anywhere in this codebase.
 
 **Why.** Three reasons, in order of weight.
 
@@ -409,11 +471,12 @@ anything else falls through to `unknown` with an honest "no rule matched, read t
 message. Adding a new downstream system means adding rules by hand. That is the right trade for
 a system that moves money.
 
----
+</details>
 
-## Limitations
+<details>
+<summary><strong>Known limitations, stated plainly ▸</strong></summary>
 
-Stated plainly, because a demo that oversells itself is worse than one that does not exist.
+A demo that oversells itself is worse than one that does not exist.
 
 - **The persona is a hypothesis.** Priya was not interviewed. She is assembled from public
   information about Medicaid contractors and state MMIS systems.
@@ -440,74 +503,9 @@ Stated plainly, because a demo that oversells itself is worse than one that does
 - **No authentication.** Anyone who can reach the port can requeue a payment job. The analyst
   name on a requeue is typed, not verified — it is an audit trail, not an identity claim.
 
+</details>
+
 ---
-
-## Repository layout
-
-```
-src/CycleGuard.Api/
-  Domain/        job model, state machine, backoff, risk, PHI masking, cause rules
-  Data/          EF Core context, SQLite pragma interceptor, WAL bootstrapper
-  Queue/         atomic claim, retry scheduling, dead-lettering, safe requeue
-  Downstream/    mock endpoints, outage registry, synthetic error text, raw-error vault
-  Workers/       worker pool, job executor, lease reaper
-  Demo/          seeded 'last night' scenario
-  Api/           minimal API routes, DTOs, read/query service
-web/             React + Vite + TypeScript + Tailwind dashboard
-tests/           xUnit suite
-docs/            risk model, decisions, bugs hit while building
-```
-
-## The unattended monitor
-
-Nobody has to open the dashboard to know whether last night is fine. A background job
-(`HealthMonitorService`) checks the queue every 30 real seconds -- on its own clock, not the
-demo's compressed one -- and leaves one verdict ready at:
-
-```
-GET /api/morning-report
-```
-
-```json
-{
-  "verdict": "NeedsAttention",
-  "headline": "8 dead letters unresolved, 42 jobs at risk.",
-  "summary": "300 jobs total, 250 succeeded, 8 dead-lettered. ...",
-  "dollarsAtRiskCents": 19969055,
-  "topIssues": [ /* up to 5 root causes, worst first */ ]
-}
-```
-
-`verdict` is one of `Idle` (nothing seeded yet), `Healthy`, `NeedsAttention`, or `Critical`
-(something has already missed its deadline) -- deterministic rules, no AI, same convention as
-every other decision in this codebase (see ADR-4). This is a health check for the queue, not a
-replacement for the risk model: it summarizes the same numbers the dashboard shows, for a
-person -- or a pager -- to read without doing the analysis themselves.
-
-A **🔊 Read report** button in the dashboard header fetches this endpoint and reads the
-headline and summary aloud with the browser's built-in speech synthesis -- no backend change,
-no AI narration, just the same deterministic sentence spoken instead of read.
-
-## Value protected
-
-The banner shows two headline numbers side by side: **dollars at risk** (exposure right now)
-and **value protected** (money this system has already saved). The second number sums two
-things, deliberately kept separate from "at risk" so the two are never confused:
-
-- Duplicate disbursements the downstream ledger refused to apply twice
-- Payments recovered after their worker crashed mid-job, that the lease reaper handed to
-  another worker instead of leaving stalled forever
-
-Not folded in: jobs that merely succeeded after a retry. That would count nearly every
-transient timeout and dilute what is meant to be a specific, earned number.
-
-## Regulatory SLA badges
-
-Encounter submissions -- the job type closest to a prior-authorization-style decision -- carry
-an `⏱ 72h expedited` or `⏱ 7-day standard` badge, tying the abstract `AtRisk` risk level back
-to the actual regulatory deadlines the persona operates under. Payment runs and claims
-adjudication are deliberately left untagged: they answer to the payment cycle close and to no
-cited regulatory deadline, and tagging them would not be honest.
 
 ## Further reading
 
@@ -515,6 +513,13 @@ cited regulatory deadline, and tagging them would not be honest.
   who has never touched .NET
 - [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) — exact steps and commands for demoing this,
   click-through or curl-only
-- [docs/risk-model.md](docs/risk-model.md) — every rule, with two worked examples
-- [docs/DECISIONS.md](docs/DECISIONS.md) — the non-obvious calls and their costs
+- [docs/risk-model.md](docs/risk-model.md) — every risk rule, with two worked examples
+- [docs/DECISIONS.md](docs/DECISIONS.md) — the non-obvious engineering calls and their costs
 - [docs/WHAT_BROKE.md](docs/WHAT_BROKE.md) — real bugs hit while building this, before and after
+
+---
+
+<p align="center">
+Built for the <strong>Acentra Codeathon 2026</strong> by <strong>Team BentoGrid</strong><br/>
+Ramyapriya · Arshad · Neha · Prince
+</p>
