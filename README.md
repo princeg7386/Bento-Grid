@@ -189,47 +189,7 @@ at `GET /api/state-machine` and enforced by
 **Built with:** ASP.NET Core (.NET 10) · C# · Entity Framework Core · SQLite · React 19 ·
 TypeScript · Vite · Tailwind CSS · xUnit
 
----
 
-## The 2-minute demo
-
-1. **The banner.** "About 300 jobs ran overnight before the payment cycle closes. *N* need
-   attention, and *$X* is at risk." The cycle countdown ticks in compressed cycle time; the rail
-   underneath pins every at-risk job at the moment it runs out of time.
-
-2. **The sort.** The list is ordered by time to breach, not by when anything failed. A
-   $95,000 disbursement 40 minutes out sits above a $4 encounter that failed thirty seconds ago.
-
-3. **One cause, dozens of symptoms.** A root-cause card reads `state-b-mmis · endpoint outage`
-   over about forty jobs, tagged **↻ HEALING**. One endpoint explains all of them, and it is
-   recovering on its own — the outage lifts roughly 24 real seconds in, and the stalled jobs
-   succeed on their fifth attempt. Click the card to filter the list. Nobody needs to do
-   anything about any of it. (The seeded scenario stalls 20 jobs deliberately; the rest are
-   ordinary encounter submissions that happen to target the same endpoint.)
-
-4. **A permanent failure.** Open one of the eight dead letters. The drawer shows the masked
-   error, the attempt timeline, the upcoming backoff schedule, and a plain-English cause with a
-   suggested action. Toggle **show raw** to see the synthetic PHI the endpoint actually returned
-   — member id, name, date of birth, SSN-shaped number, phone, email — none of which reached the
-   database.
-
-5. **Requeue cannot double-pay.** Requeue a payment job with a name and a note. Requeue it
-   again: the second attempt is refused with a 409, because it is no longer dead-lettered. The
-   **duplicates prevented** counter in the banner shows the disbursements the downstream ledger
-   refused to apply twice.
-
-6. **Kill a worker.** The seeded scenario already contains one: a payment job left `Running`
-   by `worker-3` with a lease that has already lapsed. Within a second the reaper reclaims it,
-   another worker runs attempt 2, and the timeline reads `attempt 1 worker-3 LeaseExpired` then
-   `attempt 2 worker-2 Succeeded` — one disbursement, full history kept.
-
-   **Kill a worker mid-job** does the same thing to a job running right now. It only lands if a
-   job is genuinely in flight when you press it: jobs finish in milliseconds, so if the queue has
-   drained it returns `409` and tells you to try again while it is busy.
-
-Full step-by-step, both click-through and curl-only versions: **[docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)**.
-
----
 
 ## The unattended monitor
 
