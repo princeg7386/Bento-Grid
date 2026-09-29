@@ -3,18 +3,22 @@
 /*
   An ops console, not a marketing page: near-black ground, one amber accent for the cycle
   clock, and risk expressed with a glyph and a word so it never depends on colour alone.
+
+  The ink scale is neutral gray with the faintest warm bias (R slightly ahead of B), not the
+  blue-tinted navy-black most dark-mode Tailwind templates default to -- that cool undertone
+  is itself a recognisable "generated dashboard" tell, so it was deliberately designed out.
 */
 @theme {
-  --color-ink-950: #07090d;
-  --color-ink-900: #0b0e14;
-  --color-ink-850: #10141d;
-  --color-ink-800: #151a25;
-  --color-ink-700: #1d2431;
-  --color-ink-600: #2a3342;
-  --color-ink-400: #5c6a80;
-  --color-ink-300: #8b97a8;
-  --color-ink-200: #b9c2d0;
-  --color-ink-100: #e6e9ef;
+  --color-ink-950: #0b0b0a;
+  --color-ink-900: #131311;
+  --color-ink-850: #1a1a18;
+  --color-ink-800: #222220;
+  --color-ink-700: #2d2d2a;
+  --color-ink-600: #3c3c38;
+  --color-ink-400: #757570;
+  --color-ink-300: #9d9d97;
+  --color-ink-200: #c6c6c0;
+  --color-ink-100: #ededea;
 
   --color-signal-breach: #ff5a5f;
   --color-signal-human: #c084fc;
