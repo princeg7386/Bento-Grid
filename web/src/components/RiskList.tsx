@@ -35,11 +35,7 @@ export function RiskList({
       className="min-h-0"
       actions={
         filterLabel ? (
-          <button
-            type="button"
-            onClick={onClearFilter}
-            className="rounded border border-ink-600 px-2 py-0.5 font-mono text-[10px] text-ink-200 transition hover:border-ink-400 hover:bg-ink-800"
-          >
+          <button type="button" onClick={onClearFilter} className="pill pill-ghost px-3 py-1 text-xs">
             {filterLabel} ✕
           </button>
         ) : null
@@ -57,14 +53,14 @@ export function RiskList({
       ) : (
         <table className="w-full border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-ink-850">
-            <tr className="font-mono text-[10px] tracking-[0.1em] text-ink-400 uppercase">
-              <th className="px-3 py-2 font-medium">Risk</th>
-              <th className="px-3 py-2 font-medium">Job</th>
-              <th className="px-3 py-2 text-right font-medium">At stake</th>
-              <th className="px-3 py-2 text-right font-medium">Deadline</th>
-              <th className="px-3 py-2 font-medium">State</th>
-              <th className="px-3 py-2 text-right font-medium">Next try</th>
-              <th className="px-3 py-2 font-medium">Why</th>
+            <tr className="text-xs font-semibold text-ink-400">
+              <th className="px-4 py-2.5 font-semibold">Risk</th>
+              <th className="px-4 py-2.5 font-semibold">Job</th>
+              <th className="px-4 py-2.5 text-right font-semibold">At stake</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Deadline</th>
+              <th className="px-4 py-2.5 font-semibold">State</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Next try</th>
+              <th className="px-4 py-2.5 font-semibold">Why</th>
             </tr>
           </thead>
           <tbody>
@@ -78,22 +74,22 @@ export function RiskList({
                 <tr
                   key={job.id}
                   onClick={() => onSelect(job.id)}
-                  className={`cursor-pointer border-t border-ink-800 transition ${
+                  className={`cursor-pointer border-t border-white/[0.05] transition-colors duration-150 ${
                     selected ? 'bg-ink-800' : 'hover:bg-ink-850'
                   }`}
                 >
-                  <td className="px-3 py-2 align-top">
+                  <td className="px-4 py-2.5 align-top">
                     <RiskBadge risk={job.risk} />
                   </td>
-                  <td className="px-3 py-2 align-top">
+                  <td className="px-4 py-2.5 align-top">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium text-ink-100">{jobTypeLabel(job.type)}</span>
+                      <span className="text-sm font-semibold text-ink-100">{jobTypeLabel(job.type)}</span>
                       {job.slaLabel && (
                         <span
-                          className={`shrink-0 rounded border px-1 py-px font-mono text-[9px] tracking-wide ${
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
                             job.slaClass === 'Expedited72Hour'
-                              ? 'border-signal-risk/40 bg-signal-risk/10 text-signal-risk'
-                              : 'border-ink-600 bg-ink-850 text-ink-300'
+                              ? 'bg-signal-risk/15 text-signal-risk'
+                              : 'bg-ink-800 text-ink-300'
                           }`}
                           title="Regulatory SLA for this prior-authorization-style decision."
                         >
@@ -101,31 +97,31 @@ export function RiskList({
                         </span>
                       )}
                     </div>
-                    <div className="font-mono text-[10px] text-ink-400">
+                    <div className="mt-0.5 text-xs text-ink-400">
                       #{job.id} · {job.downstreamEndpoint}
                       {job.requeueCount > 0 && ` · requeued ${job.requeueCount}×`}
                     </div>
                   </td>
-                  <td className="tnum px-3 py-2 text-right align-top font-mono text-xs font-semibold text-ink-100">
+                  <td className="tnum px-4 py-2.5 text-right align-top text-sm font-semibold text-ink-100">
                     {money(job.amountAtStakeCents)}
                   </td>
                   <td
-                    className={`tnum px-3 py-2 text-right align-top font-mono text-xs ${
+                    className={`tnum px-4 py-2.5 text-right align-top text-sm ${
                       remaining <= 0 ? 'text-signal-breach' : remaining < 1800 ? 'text-signal-risk' : 'text-ink-200'
                     }`}
                   >
                     {remaining <= 0 ? `-${clock(Math.abs(remaining))}` : clock(remaining)}
                   </td>
-                  <td className="px-3 py-2 align-top font-mono text-[11px] text-ink-200">
+                  <td className="px-4 py-2.5 align-top text-sm text-ink-200">
                     {stateLabel(job.state)}
-                    <span className="block text-[10px] text-ink-400">
+                    <span className="block text-xs text-ink-400">
                       attempt {job.attempts}/{job.maxAttempts}
                     </span>
                   </td>
-                  <td className="tnum px-3 py-2 text-right align-top font-mono text-[11px] text-ink-300">
+                  <td className="tnum px-4 py-2.5 text-right align-top text-sm text-ink-300">
                     {nextAttempt === null ? '—' : duration(nextAttempt)}
                   </td>
-                  <td className="px-3 py-2 align-top text-[11px] leading-snug text-ink-300">
+                  <td className="px-4 py-2.5 align-top text-sm leading-snug text-ink-300">
                     {job.cause ?? job.riskReason}
                   </td>
                 </tr>

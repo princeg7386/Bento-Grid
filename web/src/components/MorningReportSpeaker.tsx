@@ -43,14 +43,12 @@ export function MorningReportSpeaker() {
       onClick={() => void toggle()}
       disabled={state === 'loading'}
       title="Read the unattended monitor's morning report aloud"
-      className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] tracking-wider uppercase transition disabled:opacity-50 ${
-        state === 'speaking'
-          ? 'border-signal-track/60 bg-signal-track/10 text-signal-track'
-          : 'border-ink-700 bg-ink-900 text-ink-300 hover:border-ink-500'
+      className={`pill px-3 py-1.5 text-xs ${
+        state === 'speaking' ? 'bg-signal-track/15 text-signal-track' : 'pill-ghost'
       }`}
     >
       <span aria-hidden="true">{state === 'speaking' ? '⏹' : '🔊'}</span>
-      {state === 'loading' ? 'loading…' : state === 'speaking' ? 'stop' : state === 'error' ? 'unavailable' : 'read report'}
+      {state === 'loading' ? 'Loading…' : state === 'speaking' ? 'Stop' : state === 'error' ? 'Unavailable' : 'Read report'}
     </button>
   )
 }

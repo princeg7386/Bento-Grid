@@ -33,6 +33,17 @@ body,
 
 body {
   background-color: var(--color-ink-950);
+  /* A quiet dot-grid gives the dark ground depth without competing with the data on top of
+     it -- two layers so it reads as a texture, not a checkerboard. */
+  background-image:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 1px, transparent 1.2px),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.025) 1px, transparent 1.2px);
+  background-size:
+    28px 28px,
+    28px 28px;
+  background-position:
+    0 0,
+    14px 14px;
   color: var(--color-ink-100);
   font-feature-settings: 'tnum' 1;
   -webkit-font-smoothing: antialiased;
@@ -86,4 +97,53 @@ body {
 
 .cg-sweep {
   animation: cg-sweep 1.4s linear infinite;
+}
+
+/*
+  One bold, solid, fully-rounded button language for every primary action (Simulate last
+  night, Requeue this job) -- confident fill and dark text instead of a translucent
+  ghost-button-with-a-tinted-border, which is the single most "generic AI dashboard" tell in
+  the previous pass. Secondary actions use .pill-ghost: same shape, quieter fill.
+*/
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  transition:
+    transform 0.15s ease-out,
+    filter 0.15s ease-out,
+    background-color 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+.pill:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.pill-solid {
+  background-color: var(--color-signal-risk);
+  color: var(--color-ink-950);
+}
+
+.pill-solid:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.pill-ghost {
+  border: 1px solid var(--color-ink-700);
+  background-color: var(--color-ink-850);
+  color: var(--color-ink-100);
+}
+
+.pill-ghost:hover:not(:disabled) {
+  border-color: var(--color-ink-500, var(--color-ink-400));
+  background-color: var(--color-ink-800);
+}
+
+.pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

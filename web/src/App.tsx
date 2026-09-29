@@ -63,28 +63,28 @@ export default function App() {
   return (
     <div className="min-h-full bg-ink-950">
       <div className="mx-auto flex max-w-[1800px] flex-col gap-3 p-3 lg:p-4">
-        <div className="flex items-baseline justify-between gap-4">
+        <div className="flex items-baseline justify-between gap-4 py-1">
           <div className="flex items-baseline gap-3">
-            <h1 className="font-mono text-sm font-bold tracking-[0.2em] text-ink-100 uppercase">CycleGuard</h1>
-            <p className="hidden text-[11px] text-ink-400 sm:block">
+            <h1 className="text-lg font-bold tracking-tight text-ink-100">CycleGuard</h1>
+            <p className="hidden text-sm text-ink-400 sm:block">
               Sorted by when it will cost you, not by when it broke.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <MorningReportSpeaker />
-            <span className="font-mono text-[10px] tracking-wider text-ink-400 uppercase">
+            <span className="flex items-center text-xs text-ink-400">
               <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-signal-done align-middle cg-pulse" />
-              polling every {POLL_MS / 1000}s
+              Polling every {POLL_MS / 1000}s
             </span>
           </div>
         </div>
 
         {statusPoll.error && !statusPoll.data ? (
-          <div className="rounded-lg border border-ink-700/70 bg-ink-900">
+          <div className="rounded-2xl border border-ink-800 bg-ink-900">
             <ErrorState message={statusPoll.error} onRetry={() => void statusPoll.refresh()} />
           </div>
         ) : statusPoll.loading && !statusPoll.data ? (
-          <div className="rounded-lg border border-ink-700/70 bg-ink-900">
+          <div className="rounded-2xl border border-ink-800 bg-ink-900">
             <LoadingRows rows={4} label="Loading cycle status" />
           </div>
         ) : statusPoll.data ? (
@@ -102,16 +102,14 @@ export default function App() {
               activeEndpoint={endpointFilter}
             />
 
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {scopes.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setScope(item.id)}
-                  className={`rounded border px-2.5 py-1 font-mono text-[10px] tracking-wider transition ${
-                    scope === item.id
-                      ? 'border-ink-400 bg-ink-800 text-ink-100'
-                      : 'border-ink-700 bg-ink-900 text-ink-300 hover:border-ink-500'
+                  className={`pill px-3.5 py-1.5 text-xs ${
+                    scope === item.id ? 'bg-ink-800 text-ink-100 ring-1 ring-white/10' : 'pill-ghost'
                   }`}
                 >
                   {item.label} <span className="tnum text-ink-400">{item.count}</span>

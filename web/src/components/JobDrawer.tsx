@@ -19,14 +19,14 @@ function AttemptRow({ attempt }: { attempt: Attempt }) {
             : '▲'
 
   return (
-    <li className="relative border-l border-ink-700 pb-3 pl-5 last:pb-0">
+    <li className="relative border-l border-white/10 pb-3 pl-5 last:pb-0">
       <span
-        className={`absolute top-0.5 -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[8px] ${
+        className={`absolute top-0.5 -left-[7px] flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] ${
           attempt.outcome === 'Succeeded'
-            ? 'border-signal-done/60 bg-ink-900 text-signal-done'
+            ? 'bg-signal-done/20 text-signal-done'
             : failed
-              ? 'border-signal-breach/60 bg-ink-900 text-signal-breach'
-              : 'border-ink-600 bg-ink-900 text-ink-300'
+              ? 'bg-signal-breach/20 text-signal-breach'
+              : 'bg-ink-700 text-ink-300'
         }`}
         aria-hidden="true"
       >
@@ -34,13 +34,11 @@ function AttemptRow({ attempt }: { attempt: Attempt }) {
       </span>
 
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span className="font-mono text-[11px] font-semibold text-ink-100">Attempt {attempt.attemptNumber}</span>
-        <span className="font-mono text-[10px] text-ink-400">{attempt.workerId}</span>
-        <span className="font-mono text-[10px] text-ink-400">
-          {new Date(attempt.startedUtc).toLocaleTimeString()}
-        </span>
+        <span className="text-sm font-semibold text-ink-100">Attempt {attempt.attemptNumber}</span>
+        <span className="text-xs text-ink-400">{attempt.workerId}</span>
+        <span className="tnum text-xs text-ink-400">{new Date(attempt.startedUtc).toLocaleTimeString()}</span>
         <span
-          className={`font-mono text-[10px] ${
+          className={`text-xs font-medium ${
             attempt.outcome === 'Succeeded' ? 'text-signal-done' : failed ? 'text-signal-breach' : 'text-ink-300'
           }`}
         >
@@ -49,7 +47,7 @@ function AttemptRow({ attempt }: { attempt: Attempt }) {
       </div>
 
       {attempt.failureSignature && (
-        <div className="mt-0.5 font-mono text-[10px] tracking-wide text-ink-400 uppercase">
+        <div className="mt-0.5 text-xs text-ink-400">
           {signatureLabel(attempt.failureSignature)}
           {attempt.backoffSeconds !== null && ` · backoff ${attempt.backoffSeconds}s`}
         </div>
@@ -69,25 +67,21 @@ function ErrorComparison({ detail }: { detail: JobDetail }) {
   const rawStack = lastFailure?.stackTraceRaw ?? detail.lastStackTraceRaw
 
   if (!masked) {
-    return (
-      <p className="font-mono text-[11px] text-ink-400">This job has not produced an error.</p>
-    )
+    return <p className="text-sm text-ink-400">This job has not produced an error.</p>
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[10px] tracking-[0.12em] text-ink-400 uppercase">
+        <span className="text-xs font-medium text-ink-400">
           {showRaw ? 'Raw (as the endpoint returned it)' : 'Masked (as CycleGuard stores it)'}
         </span>
         {raw && (
           <button
             type="button"
             onClick={() => setShowRaw((value) => !value)}
-            className={`rounded border px-2 py-0.5 font-mono text-[10px] transition ${
-              showRaw
-                ? 'border-signal-breach/60 bg-signal-breach/10 text-signal-breach'
-                : 'border-ink-600 text-ink-200 hover:border-ink-400 hover:bg-ink-800'
+            className={`pill px-3 py-1 text-xs ${
+              showRaw ? 'bg-signal-breach/15 text-signal-breach' : 'pill-ghost'
             }`}
           >
             {showRaw ? '◉ showing raw PHI' : '○ show raw'}
@@ -96,15 +90,15 @@ function ErrorComparison({ detail }: { detail: JobDetail }) {
       </div>
 
       <pre
-        className={`overflow-x-auto rounded border p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap ${
-          showRaw ? 'border-signal-breach/40 bg-signal-breach/5 text-ink-100' : 'border-ink-700 bg-ink-950 text-ink-200'
+        className={`overflow-x-auto rounded-xl p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap ${
+          showRaw ? 'bg-signal-breach/10 text-ink-100' : 'bg-ink-950 text-ink-200'
         }`}
       >
         {showRaw ? raw : masked}
       </pre>
 
       {showRaw && (
-        <p className="font-mono text-[10px] leading-relaxed text-signal-risk">
+        <p className="text-xs leading-relaxed text-signal-risk">
           Synthetic PHI, held in memory only. The database never received this text.
         </p>
       )}
@@ -114,12 +108,12 @@ function ErrorComparison({ detail }: { detail: JobDetail }) {
           <button
             type="button"
             onClick={() => setShowStack((value) => !value)}
-            className="font-mono text-[10px] text-ink-300 underline decoration-ink-600 underline-offset-2 hover:text-ink-100"
+            className="text-xs font-medium text-ink-300 underline decoration-ink-600 underline-offset-2 hover:text-ink-100"
           >
             {showStack ? '▾ hide stack trace' : '▸ show stack trace'}
           </button>
           {showStack && (
-            <pre className="mt-1.5 max-h-52 overflow-auto rounded border border-ink-700 bg-ink-950 p-2.5 font-mono text-[10px] leading-relaxed whitespace-pre text-ink-300">
+            <pre className="mt-1.5 max-h-52 overflow-auto rounded-xl bg-ink-950 p-3 font-mono text-[11px] leading-relaxed whitespace-pre text-ink-300">
               {showRaw ? (rawStack ?? maskedStack) : maskedStack}
             </pre>
           )}
@@ -153,8 +147,8 @@ function RequeueForm({ jobId, onDone }: { jobId: number; onDone: () => void }) {
   }
 
   return (
-    <div className="space-y-2 rounded border border-ink-700 bg-ink-850 p-3">
-      <p className="font-mono text-[10px] tracking-[0.12em] text-ink-400 uppercase">Requeue from dead letter</p>
+    <div className="space-y-3 rounded-xl bg-ink-850 p-4">
+      <p className="text-sm font-bold text-ink-100">Requeue from dead letter</p>
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="block">
           <span className="sr-only">Analyst name</span>
@@ -162,7 +156,7 @@ function RequeueForm({ jobId, onDone }: { jobId: number; onDone: () => void }) {
             value={analyst}
             onChange={(event) => setAnalyst(event.target.value)}
             placeholder="Analyst name (required)"
-            className="w-full rounded border border-ink-600 bg-ink-950 px-2 py-1.5 font-mono text-[11px] text-ink-100 placeholder:text-ink-400 focus:border-signal-track focus:outline-none"
+            className="w-full rounded-xl bg-ink-950 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-400 focus:ring-2 focus:ring-signal-track focus:outline-none"
           />
         </label>
         <label className="block">
@@ -171,25 +165,18 @@ function RequeueForm({ jobId, onDone }: { jobId: number; onDone: () => void }) {
             value={note}
             onChange={(event) => setNote(event.target.value)}
             placeholder="What changed? (required)"
-            className="w-full rounded border border-ink-600 bg-ink-950 px-2 py-1.5 font-mono text-[11px] text-ink-100 placeholder:text-ink-400 focus:border-signal-track focus:outline-none"
+            className="w-full rounded-xl bg-ink-950 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-400 focus:ring-2 focus:ring-signal-track focus:outline-none"
           />
         </label>
       </div>
 
-      <button
-        type="button"
-        disabled={!canSubmit}
-        onClick={() => void submit()}
-        className="w-full rounded border border-signal-track/60 bg-signal-track/10 px-3 py-1.5 font-mono text-[11px] font-semibold text-signal-track transition enabled:hover:bg-signal-track/20 disabled:cursor-not-allowed disabled:border-ink-700 disabled:bg-ink-900 disabled:text-ink-400"
-      >
+      <button type="button" disabled={!canSubmit} onClick={() => void submit()} className="pill pill-solid w-full py-2 text-sm">
         {busy ? 'Requeueing…' : 'Requeue this job'}
       </button>
 
       {message && (
         <p
-          className={`font-mono text-[10px] leading-relaxed ${
-            message.tone === 'ok' ? 'text-signal-done' : 'text-signal-breach'
-          }`}
+          className={`text-xs leading-relaxed ${message.tone === 'ok' ? 'text-signal-done' : 'text-signal-breach'}`}
           role="status"
         >
           {message.text}
@@ -212,59 +199,59 @@ export function JobDrawer({ jobId, onClose }: { jobId: number; onClose: () => vo
 
   return (
     <aside
-      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-xl flex-col border-l border-ink-700 bg-ink-900 shadow-2xl"
+      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-xl flex-col bg-ink-900 shadow-2xl ring-1 ring-white/10"
       role="dialog"
       aria-label="Job detail"
     >
-      <header className="flex items-start justify-between gap-3 border-b border-ink-700 px-4 py-3">
+      <header className="flex items-start justify-between gap-3 border-b border-white/[0.06] px-5 py-4">
         <div className="min-w-0">
           {data ? (
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <RiskBadge risk={data.summary.risk} />
-                <h2 className="truncate text-sm font-semibold text-ink-100">{jobTypeLabel(data.summary.type)}</h2>
+                <h2 className="truncate text-base font-bold text-ink-100">{jobTypeLabel(data.summary.type)}</h2>
                 {data.summary.slaLabel && (
-                  <span className="shrink-0 rounded border border-ink-600 bg-ink-850 px-1.5 py-0.5 font-mono text-[10px] text-ink-300">
+                  <span className="shrink-0 rounded-full bg-ink-850 px-2 py-0.5 text-[11px] font-medium text-ink-300">
                     ⏱ {data.summary.slaLabel}
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 font-mono text-[10px] text-ink-400">
+              <p className="mt-1 text-xs text-ink-400">
                 #{data.summary.id} · {data.summary.downstreamEndpoint} · {stateLabel(data.summary.state)}
               </p>
             </>
           ) : (
-            <h2 className="font-mono text-sm text-ink-300">Job #{jobId}</h2>
+            <h2 className="text-base font-bold text-ink-300">Job #{jobId}</h2>
           )}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="rounded border border-ink-600 px-2 py-0.5 font-mono text-[11px] text-ink-200 transition hover:border-ink-400 hover:bg-ink-800"
+          className="pill pill-ghost px-3 py-1 text-xs"
           aria-label="Close job detail"
         >
-          esc ✕
+          Esc ✕
         </button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div className="min-h-0 flex-1 overflow-auto p-5">
         {error ? (
           <ErrorState message={error} onRetry={() => void refresh()} />
         ) : loading || !data ? (
           <LoadingRows rows={7} label="Loading job detail" />
         ) : (
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-3 rounded border border-ink-700 bg-ink-850 p-3 sm:grid-cols-4">
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 rounded-xl bg-ink-850 p-4 sm:grid-cols-4">
               <div>
-                <div className="font-mono text-[9px] tracking-wider text-ink-400 uppercase">At stake</div>
-                <div className="tnum font-mono text-sm font-semibold text-ink-100">
+                <div className="text-xs font-medium text-ink-400">At stake</div>
+                <div className="tnum mt-0.5 text-sm font-bold text-ink-100">
                   {moneyExact(data.summary.amountAtStakeCents)}
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[9px] tracking-wider text-ink-400 uppercase">Time to breach</div>
+                <div className="text-xs font-medium text-ink-400">Time to breach</div>
                 <div
-                  className={`tnum font-mono text-sm font-semibold ${
+                  className={`tnum mt-0.5 text-sm font-bold ${
                     data.summary.simulatedSecondsToDeadline <= 0 ? 'text-signal-breach' : 'text-ink-100'
                   }`}
                 >
@@ -272,54 +259,48 @@ export function JobDrawer({ jobId, onClose }: { jobId: number; onClose: () => vo
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[9px] tracking-wider text-ink-400 uppercase">Attempts</div>
-                <div className="tnum font-mono text-sm font-semibold text-ink-100">
+                <div className="text-xs font-medium text-ink-400">Attempts</div>
+                <div className="tnum mt-0.5 text-sm font-bold text-ink-100">
                   {data.summary.attempts}/{data.summary.maxAttempts}
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[9px] tracking-wider text-ink-400 uppercase">Requeues</div>
-                <div className="tnum font-mono text-sm font-semibold text-ink-100">{data.summary.requeueCount}</div>
+                <div className="text-xs font-medium text-ink-400">Requeues</div>
+                <div className="tnum mt-0.5 text-sm font-bold text-ink-100">{data.summary.requeueCount}</div>
               </div>
             </div>
 
             {data.summary.cause && (
-              <div className="rounded border border-signal-risk/30 bg-signal-risk/5 p-3">
-                <p className="font-mono text-[10px] tracking-[0.12em] text-signal-risk uppercase">Plain English</p>
-                <p className="mt-1 text-xs leading-relaxed text-ink-100">{data.summary.cause}</p>
-                <p className="mt-2 font-mono text-[10px] tracking-[0.12em] text-ink-400 uppercase">Suggested action</p>
-                <p className="mt-1 text-xs leading-relaxed text-ink-200">{data.summary.suggestedAction}</p>
+              <div className="rounded-xl bg-signal-risk/10 p-4">
+                <p className="text-xs font-semibold text-signal-risk">Plain English</p>
+                <p className="mt-1 text-sm leading-relaxed text-ink-100">{data.summary.cause}</p>
+                <p className="mt-3 text-xs font-semibold text-ink-400">Suggested action</p>
+                <p className="mt-1 text-sm leading-relaxed text-ink-200">{data.summary.suggestedAction}</p>
               </div>
             )}
 
             <section>
-              <h3 className="mb-2 font-mono text-[10px] tracking-[0.14em] text-ink-300 uppercase">Attempt timeline</h3>
+              <h3 className="mb-2.5 text-sm font-bold text-ink-200">Attempt timeline</h3>
               <ol className="ml-1.5">
                 {data.attempts.map((attempt) => (
                   <AttemptRow key={attempt.id} attempt={attempt} />
                 ))}
-                {data.attempts.length === 0 && (
-                  <li className="font-mono text-[11px] text-ink-400">Not attempted yet.</li>
-                )}
+                {data.attempts.length === 0 && <li className="text-sm text-ink-400">Not attempted yet.</li>}
               </ol>
             </section>
 
             {data.upcomingBackoff.length > 0 && (
               <section>
-                <h3 className="mb-2 font-mono text-[10px] tracking-[0.14em] text-ink-300 uppercase">
-                  Upcoming backoff
-                </h3>
-                <ul className="space-y-1">
+                <h3 className="mb-2.5 text-sm font-bold text-ink-200">Upcoming backoff</h3>
+                <ul className="space-y-1.5">
                   {data.upcomingBackoff.map((slot) => (
                     <li
                       key={slot.attemptNumber}
-                      className={`flex items-center justify-between rounded border px-2.5 py-1.5 font-mono text-[11px] ${
-                        slot.afterDeadline
-                          ? 'border-signal-breach/40 bg-signal-breach/5 text-signal-breach'
-                          : 'border-ink-700 bg-ink-850 text-ink-200'
+                      className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs ${
+                        slot.afterDeadline ? 'bg-signal-breach/10 text-signal-breach' : 'bg-ink-850 text-ink-200'
                       }`}
                     >
-                      <span>attempt {slot.attemptNumber}</span>
+                      <span>Attempt {slot.attemptNumber}</span>
                       <span className="tnum">+{duration(slot.simulatedDelaySeconds)} cycle time</span>
                       <span className="tnum text-ink-400">{slot.realDelaySeconds}s real</span>
                       {slot.afterDeadline && <span>▲ after deadline</span>}
@@ -330,9 +311,7 @@ export function JobDrawer({ jobId, onClose }: { jobId: number; onClose: () => vo
             )}
 
             <section>
-              <h3 className="mb-2 font-mono text-[10px] tracking-[0.14em] text-ink-300 uppercase">
-                Failure text
-              </h3>
+              <h3 className="mb-2.5 text-sm font-bold text-ink-200">Failure text</h3>
               <ErrorComparison detail={data} />
             </section>
 
@@ -341,14 +320,12 @@ export function JobDrawer({ jobId, onClose }: { jobId: number; onClose: () => vo
             )}
 
             <section>
-              <h3 className="mb-2 font-mono text-[10px] tracking-[0.14em] text-ink-300 uppercase">Audit trail</h3>
-              <ul className="space-y-1">
+              <h3 className="mb-2.5 text-sm font-bold text-ink-200">Audit trail</h3>
+              <ul className="space-y-1.5">
                 {data.events.map((event) => (
-                  <li key={event.id} className="flex gap-2 font-mono text-[10px] leading-relaxed">
-                    <span className="tnum shrink-0 text-ink-400">
-                      {new Date(event.atUtc).toLocaleTimeString()}
-                    </span>
-                    <span className="shrink-0 text-ink-200">{event.eventType}</span>
+                  <li key={event.id} className="flex gap-2 text-xs leading-relaxed">
+                    <span className="tnum shrink-0 text-ink-400">{new Date(event.atUtc).toLocaleTimeString()}</span>
+                    <span className="shrink-0 font-medium text-ink-200">{event.eventType}</span>
                     <span className="shrink-0 text-ink-400">{event.actor}</span>
                     <span className="min-w-0 text-ink-300">{event.details}</span>
                   </li>
@@ -356,11 +333,11 @@ export function JobDrawer({ jobId, onClose }: { jobId: number; onClose: () => vo
               </ul>
             </section>
 
-            <details className="rounded border border-ink-700 bg-ink-950 p-2.5">
-              <summary className="cursor-pointer font-mono text-[10px] tracking-wider text-ink-400 uppercase">
+            <details className="rounded-xl bg-ink-950 p-3">
+              <summary className="cursor-pointer text-xs font-medium text-ink-400">
                 Payload · idempotency key {data.summary.idempotencyKey}
               </summary>
-              <pre className="mt-2 overflow-x-auto font-mono text-[10px] leading-relaxed whitespace-pre-wrap text-ink-300">
+              <pre className="mt-2 overflow-x-auto font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-ink-300">
                 {JSON.stringify(JSON.parse(data.payload), null, 2)}
               </pre>
             </details>
