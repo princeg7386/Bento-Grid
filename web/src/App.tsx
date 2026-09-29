@@ -10,6 +10,7 @@ import { JobDrawer } from './components/JobDrawer'
 import { MorningReportSpeaker } from './components/MorningReportSpeaker'
 import { RiskList } from './components/RiskList'
 import { SimulationPanel } from './components/SimulationPanel'
+import { SystemMap } from './components/SystemMap'
 import { ErrorState, LoadingRows } from './components/Primitives'
 
 type Scope = 'attention' | 'all' | 'deadletters'
@@ -31,6 +32,9 @@ export default function App() {
   )
   const groupsPoll = usePolling<RootCauseGroup[]>(() => api.groups(), POLL_MS)
   const deadLetterPoll = usePolling<DeadLetterGroup[]>(() => api.deadLetters(), POLL_MS)
+  // The system map always shows all four endpoints at once, so it needs the unfiltered job
+  // list even while a root-cause click has narrowed jobsPoll down to one endpoint.
+  const mapJobsPoll = usePolling<JobSummary[]>(() => api.jobs(), POLL_MS)
 
   const allJobs = jobsPoll.data ?? []
 
@@ -52,7 +56,8 @@ export default function App() {
     void jobsPoll.refresh()
     void groupsPoll.refresh()
     void deadLetterPoll.refresh()
-  }, [statusPoll, jobsPoll, groupsPoll, deadLetterPoll])
+    void mapJobsPoll.refresh()
+  }, [statusPoll, jobsPoll, groupsPoll, deadLetterPoll, mapJobsPoll])
 
   const scopes: { id: Scope; label: string; count: number }[] = [
     { id: 'attention', label: 'Needs attention', count: attentionJobs.length },
@@ -93,6 +98,13 @@ export default function App() {
 
         <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="flex min-h-0 flex-col gap-3">
+            <SystemMap
+              jobs={mapJobsPoll.data ?? []}
+              outages={statusPoll.data?.activeOutages ?? []}
+              groups={groupsPoll.data ?? []}
+              loading={mapJobsPoll.loading && !mapJobsPoll.data}
+            />
+
             <GroupCards
               groups={groupsPoll.data ?? []}
               loading={groupsPoll.loading && !groupsPoll.data}
